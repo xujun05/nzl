@@ -68,7 +68,8 @@ from zipline.finance.controls import (
     MaxOrderSize,
     MaxPositionSize,
     MaxLeverage,
-    RestrictedListOrder
+    RestrictedListOrder,
+    LimitPrice
 )
 from zipline.finance.execution import (
     LimitOrder,
@@ -137,8 +138,13 @@ from zipline.gens.sim_engine import MinuteSimulationClock
 from zipline.sources.benchmark_source import BenchmarkSource
 from zipline.zipline_warnings import ZiplineDeprecationWarning
 
-
 log = logbook.Logger("ZiplineLog")
+
+
+def get_round_lot(asset):
+    # fixme 131810
+    assert isinstance(asset, Equity)
+    return 100
 
 
 class TradingAlgorithm(object):
@@ -252,7 +258,7 @@ class TradingAlgorithm(object):
         self.sources = []
 
         # List of trading controls to be used to validate orders.
-        self.trading_controls = []
+        self.trading_controls = [LongOnly(on_error="log"), LimitPrice(on_error='log')]
 
         # List of account controls to be checked on each bar.
         self.account_controls = []
@@ -449,7 +455,7 @@ class TradingAlgorithm(object):
         self._in_before_trading_start = True
 
         with handle_non_market_minutes(data) if \
-                self.data_frequency == "minute" else ExitStack():
+                        self.data_frequency == "minute" else ExitStack():
             self._before_trading_start(self, data)
 
         self._in_before_trading_start = False
@@ -884,8 +890,8 @@ class TradingAlgorithm(object):
         if capital_change['type'] == 'target':
             target = capital_change['value']
             capital_change_amount = target - \
-                (self.updated_portfolio().portfolio_value -
-                 portfolio_value_adjustment)
+                                    (self.updated_portfolio().portfolio_value -
+                                     portfolio_value_adjustment)
             self.portfolio_needs_update = True
 
             log.info('Processing capital change to target %s at %s. Capital '
@@ -1363,7 +1369,12 @@ class TradingAlgorithm(object):
         else:
             value_multiplier = 1
 
-        return value / (last_price * value_multiplier)
+        amount = value / (last_price * value_multiplier)
+        if isinstance(asset, Equity):
+            round_lot = get_round_lot(asset)
+            amount = int(amount / round_lot) * round_lot
+
+        return amount
 
     def _can_order_asset(self, asset):
         if not isinstance(asset, Asset):

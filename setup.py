@@ -241,7 +241,7 @@ def extras_requires(conda_format=False):
         extra: read_requirements('etc/requirements_{0}.txt'.format(extra),
                                  strict_bounds=True,
                                  conda_format=conda_format)
-        for extra in ('dev', 'talib', 'ib')
+        for extra in ('dev', 'talib', 'ib','tdx')
     }
     extras['all'] = [req for reqs in extras.values() for req in reqs]
 
@@ -294,7 +294,7 @@ setup(
     ext_modules=ext_modules,
     include_package_data=True,
     package_data={root.replace(os.sep, '.'):
-                  ['*.pyi', '*.pyx', '*.pxi', '*.pxd']
+                  ['*.pyi', '*.pyx', '*.pxi', '*.pxd','*.pyd']
                   for root, dirnames, filenames in os.walk('zipline')
                   if '__pycache__' not in root},
     license='Apache 2.0',

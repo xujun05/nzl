@@ -1,0 +1,5 @@
+pytdx>=0.1
+cn-treasury_curve>=0.6
+cn-stock-holidays>=1.0
+tdx-wrapper>=0.1
+zerorpc>=0.6.1

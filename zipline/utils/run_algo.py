@@ -1,35 +1,37 @@
 import os
 import re
-from runpy import run_path
 import sys
 import warnings
-
-from functools import partial
-
-import pandas as pd
-
+from runpy import run_path
 
 import click
+
 try:
     from pygments import highlight
     from pygments.lexers import PythonLexer
     from pygments.formatters import TerminalFormatter
+
     PYGMENTS = True
 except:
     PYGMENTS = False
 from toolz import valfilter, concatv
+import zipline.utils.paths as pth
+import pandas as pd
+from functools import partial
 
-from zipline.algorithm import TradingAlgorithm
-from zipline.algorithm_live import LiveTradingAlgorithm
 from zipline.data.bundles.core import load
 from zipline.data.data_portal import DataPortal
-from zipline.data.data_portal_live import DataPortalLive
 from zipline.finance.trading import TradingEnvironment
 from zipline.pipeline.data import USEquityPricing
 from zipline.pipeline.loaders import USEquityPricingLoader
 from zipline.utils.calendars import get_calendar
 from zipline.utils.factory import create_simulation_parameters
-import zipline.utils.paths as pth
+from zipline.gens.brokers.broker import Broker
+from zipline.data.data_portal_live import DataPortalLive
+
+from zipline.data.cn_loader import load_market_data
+from zipline.algorithm_live import LiveTradingAlgorithm
+from zipline.algorithm import TradingAlgorithm
 
 
 class _RunAlgoError(click.ClickException, ValueError):
@@ -68,6 +70,7 @@ def _run(handle_data,
          start,
          end,
          output,
+         trading_calendar,
          print_algo,
          local_namespace,
          environ,
@@ -122,6 +125,11 @@ def _run(handle_data,
         else:
             click.echo(algotext)
 
+    if not trading_calendar:
+        trading_calendar = get_calendar('SHSZ')
+    elif isinstance(trading_calendar,str):
+        trading_calendar = get_calendar(str)
+
     if bundle is not None:
         bundle_data = load(
             bundle,
@@ -139,19 +147,19 @@ def _run(handle_data,
                 "invalid url %r, must begin with 'sqlite:///'" %
                 str(bundle_data.asset_finder.engine.url),
             )
-        env = TradingEnvironment(asset_db_path=connstr, environ=environ)
-        first_trading_day =\
+        env = TradingEnvironment(load=load_market_data, bm_symbol='000300', asset_db_path=connstr, environ=environ)
+        first_trading_day = \
             bundle_data.equity_minute_bar_reader.first_trading_day
 
         DataPortalClass = (partial(DataPortalLive, broker)
                            if broker
                            else DataPortal)
         data = DataPortalClass(
-            env.asset_finder, get_calendar("NYSE"),
+            env.asset_finder, trading_calendar,
             first_trading_day=first_trading_day,
             equity_minute_reader=bundle_data.equity_minute_bar_reader,
             equity_daily_reader=bundle_data.equity_daily_bar_reader,
-            adjustment_reader=bundle_data.adjustment_reader
+            adjustment_reader=bundle_data.adjustment_reader,
         )
 
         pipeline_loader = USEquityPricingLoader(
@@ -166,10 +174,10 @@ def _run(handle_data,
                 "No PipelineLoader registered for column %s." % column
             )
     else:
-        env = TradingEnvironment(environ=environ)
+        env = TradingEnvironment(environ=environ, load=load_market_data, bm_symbol='000300', )
         choose_loader = None
 
-    emission_rate = 'daily'
+    emission_rate = 'daily'  # TODO why daily default
     if broker:
         emission_rate = 'minute'
         start = pd.Timestamp.utcnow()
@@ -180,17 +188,18 @@ def _run(handle_data,
                                      state_filename=state_filename,
                                      realtime_bar_target=realtime_bar_target)
                              if broker else TradingAlgorithm)
-
     perf = TradingAlgorithmClass(
         namespace=namespace,
         env=env,
         get_pipeline_loader=choose_loader,
+        trading_calendar=trading_calendar,
         sim_params=create_simulation_parameters(
             start=start,
             end=end,
             capital_base=capital_base,
             emission_rate=emission_rate,
             data_frequency=data_frequency,
+            trading_calendar=trading_calendar,
         ),
         **{
             'initialize': initialize,
@@ -278,12 +287,16 @@ def run_algorithm(start,
                   data=None,
                   bundle=None,
                   bundle_timestamp=None,
+                  trading_calendar=None,
+                  output='-',
                   default_extension=True,
                   extensions=(),
                   strict_extensions=True,
                   environ=os.environ,
-                  live_trading=False,
-                  tws_uri=None):
+                  broker=None,
+                  state_filename=None,
+                  realtime_bar_target=None
+                  ):
     """Run a trading algorithm.
 
     Parameters
@@ -324,9 +337,12 @@ def run_algorithm(start,
         The datetime to lookup the bundle data for. This defaults to the
         current time.
         This argument is mutually exclusive with ``data``.
+    trading_calendar : TradingCalendar, optional
+        The trading calendar to use for your backtest.
     default_extension : bool, optional
         Should the default zipline extension be loaded. This is found at
         ``$ZIPLINE_ROOT/extension.py``
+    output: output  result
     extensions : iterable[str], optional
         The names of any other extensions to load. Each element may either be
         a dotted module path like ``a.b.c`` or a path to a python file ending
@@ -348,6 +364,27 @@ def run_algorithm(start,
     zipline.data.bundles.bundles : The available data bundles.
     """
     load_extensions(default_extension, extensions, strict_extensions, environ)
+
+    if broker and not isinstance(broker,Broker):
+        raise ValueError('broker must be a Broker instance')
+
+    # check that the start and end dates are passed correctly
+    if not broker and start is None and end is None:
+        # check both at the same time to avoid the case where a user
+        # does not pass either of these and then passes the first only
+        # to be told they need to pass the second argument also
+        raise Exception('must specify start date and end date')
+
+    if not broker and start is None:
+        raise Exception("must specify a start date")
+    if not broker and end is None:
+        raise Exception("must specify an end date")
+
+    if broker and state_filename is None:
+        raise Exception("must specify state-file with live trading")
+
+    if broker and realtime_bar_target is None:
+        raise Exception("must specify realtime-bar-target with live trading")
 
     non_none_data = valfilter(bool, {
         'data': data is not None,
@@ -383,11 +420,12 @@ def run_algorithm(start,
         bundle_timestamp=bundle_timestamp,
         start=start,
         end=end,
-        output=os.devnull,
+        output=output,
+        trading_calendar=trading_calendar,
         print_algo=False,
         local_namespace=False,
         environ=environ,
-        broker=None,
-        state_filename=None,
-        realtime_bar_target=None
+        broker=broker,
+        state_filename=state_filename,
+        realtime_bar_target=realtime_bar_target
     )

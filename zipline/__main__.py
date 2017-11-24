@@ -15,6 +15,7 @@ from zipline.data import bundles as bundles_module
 from zipline.utils.cli import Date, Timestamp
 from zipline.utils.run_algo import _run, load_extensions
 from zipline.gens import brokers
+from zipline.data.bundles.tdx_bundle import register_tdx
 
 try:
     __IPYTHON__
@@ -308,6 +309,7 @@ def run(ctx,
         start=start,
         end=end,
         output=output,
+        trading_calendar=None,
         print_algo=print_algo,
         local_namespace=local_namespace,
         environ=os.environ,
@@ -367,6 +369,37 @@ def zipline_magic(line, cell=None):
     help='The data bundle to ingest.',
 )
 @click.option(
+    '-a',
+    '--assets',
+    default=None,
+    help='a file contains list of assets to ingest. the file have tow columns, separated by comma'
+         'symbol: code of asset,'
+         'name:   name of asset,'
+         'examples:'
+         '  510050,50ETF'
+         '  510500,500ETF'
+         '  510300,300ETF',
+)
+@click.option(
+    '--minute',
+    default=False,
+    type=bool,
+    help='whether to ingest minute, default False',
+)
+@click.option(
+    '--start',
+    default=None,
+    type=Date(tz='utc', as_timestamp=True),
+    help='start session',
+)
+@click.option(
+    '-o',
+    '--overwrite',
+    default=False,
+    type=bool,
+    help='whether to overwrite default start session for minute data(3 years) with start.',
+)
+@click.option(
     '--assets-version',
     type=int,
     multiple=True,
@@ -377,16 +410,22 @@ def zipline_magic(line, cell=None):
     default=True,
     help='Print progress information to the terminal.'
 )
-def ingest(bundle, assets_version, show_progress):
-    """Ingest the data for the given bundle.
-    """
-    bundles_module.ingest(
-        bundle,
-        os.environ,
-        pd.Timestamp.utcnow(),
-        assets_version,
-        show_progress,
-    )
+def ingest(bundle, assets, minute, start,overwrite, assets_version, show_progress):
+    if bundle == 'tdx':
+        if assets:
+            if not os.path.exists(assets):
+                raise FileNotFoundError
+            df = pd.read_csv(assets, names=['symbol', 'name'], dtype=str, encoding='utf8')
+            register_tdx(df,minute,start,overwrite)
+        else:
+            register_tdx(None,minute,start,overwrite)
+
+    bundles_module.ingest(bundle,
+                          os.environ,
+                          pd.Timestamp.utcnow(),
+                          assets_version,
+                          show_progress,
+                          )
 
 
 @main.command()
