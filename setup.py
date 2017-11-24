@@ -278,18 +278,18 @@ conditional_arguments = {
 }
 
 setup(
-    name='zipline-live',
-    url="http://zipline-live.io",
+    name='cn-zipline-live',
+    url="https://github.com/JaysonAlbert/zipline",
     version=versioneer.get_version(),
     cmdclass=LazyBuildExtCommandClass(versioneer.get_cmdclass()),
-    description='A backtester and live trader for financial algorithms.',
+    description='A backtester and live trader for financial algorithms in China.',
     entry_points={
         'console_scripts': [
             'zipline = zipline.__main__:main',
         ],
     },
-    author='zipline-live community',
-    author_email='community@zipline-live.io',
+    author='Jayson',
+    author_email='790930856@qq.com',
     packages=find_packages(include=['zipline', 'zipline.*']),
     ext_modules=ext_modules,
     include_package_data=True,

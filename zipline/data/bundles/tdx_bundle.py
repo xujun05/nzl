@@ -140,7 +140,7 @@ def tdx_bundle(assets,
 
     today = pd.to_datetime('today')
     distance = calendar.session_distance(start_session, today)
-    if not overwrite and (distance >= 100):
+    if ingest_minute and not overwrite and (distance >= 100):
         minute_start = calendar.all_sessions[searchsorted(calendar.all_sessions, today - pd.DateOffset(years=3))]
         logger.warning(
             "overwrite start_session for minute bars to {}(3 years),"
