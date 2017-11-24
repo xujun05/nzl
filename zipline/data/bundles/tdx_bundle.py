@@ -193,6 +193,10 @@ def tdx_bundle(assets,
 
 
 def register_tdx(assets=None, minute=False, start=None, overwrite=False, end=None):
+    try:
+        bundles.unregister('tdx')
+    except bundles.UnknownBundle:
+        pass
     calendar = get_calendar('SHSZ')
     if start:
         if not calendar.is_session(start):

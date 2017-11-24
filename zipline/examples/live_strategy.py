@@ -15,8 +15,8 @@ def handle_data(context, data):
 
 if __name__ == '__main__':
     from zipline.utils.cli import Date
-    from cn_zipline.utils.run_algo import run_algorithm
-    from cn_zipline.gens.brokers.tdx_broker import TdxBroker
+    from zipline.utils.run_algo import run_algorithm
+    from zipline.gens.brokers.tdx_broker import TdxBroker
     import pandas as pd
     import os
 
