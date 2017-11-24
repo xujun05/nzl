@@ -14,6 +14,7 @@ from zipline.finance.order import (
     ORDER_STATUS as ZP_ORDER_STATUS
 )
 from zipline.gens.type import Transaction as TdxTransaction
+from zipline.gens.type import Order as TdxOrder
 from zipline.finance.transaction import Transaction
 from zipline.api import symbol
 from zipline.gens.type import *
@@ -174,6 +175,9 @@ class TdxBroker(Broker):
 
         if not order:
             order = self._client.orders()[order_id]
+
+        if isinstance(order, list):  # handle rpc response for namedtuple object
+            order = TdxOrder(*order)
         self._orders[zp_order_id] = self.tdx_order_to_zipline_order(order)
         return self._orders[zp_order_id]
 
@@ -204,7 +208,9 @@ class TdxBroker(Broker):
         )
 
     def tdx_order_to_zipline_order(self, order):
-        if order.filled == 0:
+        if order.status == '已撤':
+            zp_status = ZP_ORDER_STATUS.CANCELLED
+        elif order.filled == 0:
             zp_status = ZP_ORDER_STATUS.OPEN
         else:
             zp_status = ZP_ORDER_STATUS.FILLED
@@ -228,6 +234,8 @@ class TdxBroker(Broker):
     def _update_orders(self):
         ods = self._client.orders()
         for tdx_order_id, tdx_order in iteritems(ods):
+            if isinstance(tdx_order, list):  # handle rpc response for namedtuple object
+                tdx_order = TdxOrder(*tdx_order)
             zp_order_id = self._tdx_to_zp_order_id(tdx_order_id)
             self._orders[zp_order_id] = self.tdx_order_to_zipline_order(tdx_order)
 

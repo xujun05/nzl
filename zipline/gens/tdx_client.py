@@ -9,6 +9,9 @@ import pandas as pd
 from zipline.utils.util import getJsonPath
 from collections import namedtuple
 import datetime
+from six import PY2
+if not PY2:
+    import str as unicode
 
 
 class TdxClient(object):
@@ -57,14 +60,16 @@ class TdxClient(object):
         df = self.process_data(df)
         rt = {}
         for index, row in df.T.iteritems():
+            if row["报价方式"] != "买卖":
+                continue
             order_id = row["委托编号"]
             mul = -1 if row["买卖标志"] == 1 else 1
             rt[order_id] = Order(
-                dt=str(pd.to_datetime("today").date()) + " " + row["委托时间"],
+                dt=unicode(pd.to_datetime("today").date()) + " " + unicode(row["委托时间"]),
                 # TODO timezone, zerorpc can't serialize datetime
-                symbol=row["证券代码"],
-                name=row["证券名称"],
-                status=row["状态说明"],
+                symbol=unicode(row["证券代码"]),
+                name=unicode(row["证券名称"],'utf8'),
+                status=unicode(row["状态说明"],'utf8'),
                 price=row["委托价格"],
                 amount=mul * row["委托数量"],
                 order_id=row["委托编号"],
@@ -107,7 +112,7 @@ class TdxClient(object):
                 dt = str(datetime.datetime.strptime(str(row["成交日期"]), "%Y%m%d").date()) + " " + row["成交时间"],
             rt[id] = Transaction(
                 id=id,
-                asset=row["证券代码"],
+                asset=unicode(row["证券代码"]),
                 amount=sign * row["成交数量"],
                 dt=dt,
                 price=row["成交价格"],
