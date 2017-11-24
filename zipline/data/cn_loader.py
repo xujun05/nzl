@@ -148,8 +148,6 @@ def load_market_data(trading_day=None, trading_days=None, bm_symbol='000001', tr
 
     # We'll attempt to download new data if the latest entry in our cache is
     # before this date.
-    if now.time() > pd.to_datetime('15:30').tz_localize('Asia/Shanghai').tz_convert("UTC").time():
-        trading_day_before = 0
     last_date = trading_days[trading_days.get_loc(now, method='bfill') - trading_day_before]
 
     br = ensure_benchmark_data(

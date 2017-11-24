@@ -128,7 +128,7 @@ def _run(handle_data,
     if not trading_calendar:
         trading_calendar = get_calendar('SHSZ')
     elif isinstance(trading_calendar,str):
-        trading_calendar = get_calendar(str)
+        trading_calendar = get_calendar(trading_calendar)
 
     if bundle is not None:
         bundle_data = load(

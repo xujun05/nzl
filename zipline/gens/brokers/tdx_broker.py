@@ -23,10 +23,9 @@ from logbook import Logger
 import pandas as pd
 from tdx.engine import Engine
 import numpy as np
-from abc import ABCMeta, abstractmethod, abstractproperty
-import abc
 import zerorpc
 import platform
+from zipline.errors import SymbolNotFound
 
 if platform.architecture()[0] == '32bit':
     from zipline.gens.tdx_client import TdxClient
@@ -225,10 +224,10 @@ class TdxBroker(Broker):
             stop=None,
             limit=order.price,  # TODO 市价单和限价单
             id=zp_order_id,
-            broker_order_id=order.order_id
         )
-
+        od.broker_order_id=order.order_id
         od.status = zp_status
+
         return od
 
     def _update_orders(self):
@@ -244,7 +243,7 @@ class TdxBroker(Broker):
         return Transaction(
             asset=symbol(transaction.asset),
             amount=transaction.amount,
-            dt=pd.to_datetime(transaction.dt, timezone='Asia/Shanghai').tz_convert('UTC'),  # TODO timezone
+            dt=pd.to_datetime(transaction.dt).tz_localize('Asia/Shanghai').tz_convert('UTC'),
             price=transaction.price,
             order_id=transaction.order_id,
             commission=transaction.commission,
@@ -254,11 +253,13 @@ class TdxBroker(Broker):
     def transactions(self):
         t = self._client.transactions()
         rt = {}
-        print(t)
         for exec_id, transaction in t.items():
-            if isinstance(transaction, list):  # handle rpc response for namedtuple object
-                transaction = TdxTransaction(*transaction)
-            rt[exec_id] = self._tdx_transaction_to_zipline(transaction)
+            try:
+                if isinstance(transaction, list):  # handle rpc response for namedtuple object
+                    transaction = TdxTransaction(*transaction)
+                rt[exec_id] = self._tdx_transaction_to_zipline(transaction)
+            except SymbolNotFound as e:
+                log.warning(e.message)
 
         return rt
 
