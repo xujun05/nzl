@@ -16,17 +16,17 @@ zipline-live
 基于tdx的zipline.
 
 
-`zipline <http://zipline.io/>`_ 是美国`Quantopian <https://quantopian.com/>`_ 公司开源的量化交易回测引擎，它使用`Python`语言开发，
+`zipline <http://zipline.io/>`_ 是美国 `Quantopian <https://quantopian.com/>`_ 公司开源的量化交易回测引擎，它使用`Python`语言开发，
 部分代码使用`cython`融合了部分c语言代码。`Quantopian` 在它的网站上的回测系统就是基于`zipline`的，
 经过生产环境的长期使用，已经比完善，并且在持续的改进中。
 
-`zipline` 的基本使用方法在https://www.quantopian.com/tutorials/getting-started/ ,对于zipline的深度解析，可以看大神`rainx <https://github.com/rainx>`_写的`文档 <https://www.gitbook.com/book/rainx/-zipline/details>`_ ，本项目中的大部分依赖项目也都是rainx开发的项目
+`zipline` 的基本使用方法在 https://www.quantopian.com/tutorials/getting-started/ ,对于zipline的深度解析，可以看大神 `rainx <https://github.com/rainx>`_ 写的 `文档 <https://www.gitbook.com/book/rainx/-zipline/details>`_ ，本项目中的大部分依赖项目也都是rainx开发的项目
 
 
 数据源
 --------
 
-`cn-zipline-live`的历史k线以及除息除权数据来自通达信，数据接口来自项目github 项目tdx https://github.com/JaysonAlbert/tdx
+``cn-zipline-live`` 的历史k线以及除息除权数据来自通达信，数据接口来自项目github 项目 `tdx <https://github.com/JaysonAlbert/tdx>`_
 
 安装
 ----------
@@ -36,13 +36,13 @@ zipline-live
 
 实盘
 ----------
-实盘部分代码正在测试中，请参考`issue <https://github.com/JaysonAlbert/cn_zipline/issues/2>`_
+实盘部分代码正在测试中，请参考 `issue <https://github.com/JaysonAlbert/cn_zipline/issues/2>`_
 
 
 使用
 ----------
 
-cn-zipline-live与zipline大同小异，具体使用方法请参考zipline`官方文档 <https://www.quantopian.com/tutorials/getting-started>`_ 。
+cn-zipline-live与zipline大同小异，具体使用方法请参考zipline `官方文档 <https://www.quantopian.com/tutorials/getting-started>`_ 。
 
 
 一、ingest数据：
@@ -63,13 +63,13 @@ cn-zipline-live与zipline大同小异，具体使用方法请参考zipline`官�
 二、编写策略以及运行策略：
 -----------
 
-请参考目录:`zipline/examples`
+请参考目录: `zipline/examples`
 
 
 问题
 --------------
 
-如有任何问题，欢迎大家提交`issue <https://github.com/JaysonAlbert/cn-zipline-live/issues/new/>`_ ，反馈bug，以及提出改进建议。
+如有任何问题，欢迎大家提交 `issue <https://github.com/JaysonAlbert/cn-zipline-live/issues/new/>`_ ，反馈bug，以及提出改进建议。
 
 其它
 --------------
