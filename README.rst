@@ -36,7 +36,7 @@ zipline-live
 
 实盘
 ----------
-实盘部分代码正在测试中，请参考 `issue <https://github.com/JaysonAlbert/cn_zipline/issues/2>`_
+实盘部分代码正在测试中，请参考 `issue <https://github.com/JaysonAlbert/zipline/issues/1>`_
 
 
 使用
@@ -69,7 +69,7 @@ cn-zipline-live与zipline大同小异，具体使用方法请参考zipline `官�
 问题
 --------------
 
-如有任何问题，欢迎大家提交 `issue <https://github.com/JaysonAlbert/cn-zipline-live/issues/new/>`_ ，反馈bug，以及提出改进建议。
+如有任何问题，欢迎大家提交 `issue <https://github.com/JaysonAlbert/zipline/issues/new/>`_ ，反馈bug，以及提出改进建议。
 
 其它
 --------------
