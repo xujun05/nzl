@@ -68,7 +68,9 @@ class TdxBroker(Broker):
         if self._bars_update_dt and (now - self._bars_update_dt < self._bars_update_interval):
             return
         for code in self.subscribed_assets:
-            self._bars[code.symbol] = self._mkt_client.time_and_price(code.symbol)
+            bars = self._mkt_client.time_and_price(code.symbol)
+            bars.index = bars.index.tz_localize('Asian/Shanghai').tz_convert('UTC')
+            self._bars[code.symbol] = bars
 
         self._bars_update_dt = now
 
@@ -326,7 +328,6 @@ class TdxBroker(Broker):
             self._update_bars()
 
             trade_prices = self._bars[symbol]['price']
-            trade_prices.index = trade_prices.index.tz_localize('Asia/Shanghai').tz_convert('UTC')
             trade_sizes = self._bars[symbol]['vol']
             ohlcv = trade_prices.resample(resample_freq,
                                           label='right',
