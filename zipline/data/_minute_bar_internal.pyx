@@ -4,6 +4,7 @@ from cpython cimport bool
 cimport cython
 
 cdef inline int int_min(int a, int b): return a if a <= b else b
+cdef minutes_in_lunch_break = 90
 
 @cython.cdivision(True)
 def minute_value(ndarray[long_t, ndim=1] market_opens,
@@ -81,7 +82,11 @@ def find_position_of_minute(ndarray[long_t, ndim=1] market_opens,
     market_open = market_opens[market_open_loc]
     market_close = market_closes[market_open_loc]
 
-    if not forward_fill and ((minute_val - market_open) >= minutes_per_day):
+    delta = minute_val - market_open
+    if delta > 120:
+        delta -= 90
+
+    if not forward_fill and delta > minutes_per_day:
         raise ValueError("Given minute is not between an open and a close")
 
     delta = int_min(minute_val - market_open, market_close - market_open)

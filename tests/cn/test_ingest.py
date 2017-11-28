@@ -31,5 +31,5 @@ def target_ingest(assets,ingest_minute=False):
 
 
 def test_target_ingest():
-    yield target_ingest,'tests/ETF.csv',True
+    yield target_ingest,'tests/cn/ETF.csv',True
     yield target_ingest,None,False

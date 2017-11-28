@@ -201,10 +201,10 @@ def register_tdx(assets=None, minute=False, start=None, overwrite=False, end=Non
     if start:
         if not calendar.is_session(start):
             start = calendar.all_sessions[searchsorted(calendar.all_sessions, start)]
-    bundles.register('tdx', partial(tdx_bundle, assets, minute, overwrite), 'SHSZ', start, end)
+    bundles.register('tdx', partial(tdx_bundle, assets, minute, overwrite), 'SHSZ', start, end, minutes_per_day=240)
 
 
-bundles.register('tdx', partial(tdx_bundle, None, False, False))
+bundles.register('tdx', partial(tdx_bundle, None, False, False),minutes_per_day=240)
 
 if __name__ == '__main__':
     eg = Engine(auto_retry=True, multithread=True, thread_num=8)

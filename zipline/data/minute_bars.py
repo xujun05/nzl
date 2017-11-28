@@ -44,7 +44,6 @@ from zipline.utils.calendars import get_calendar
 from zipline.utils.cli import maybe_show_progress
 from zipline.utils.memoize import lazyval
 
-
 logger = logbook.Logger('MinuteBars')
 
 US_EQUITIES_MINUTES_PER_DAY = 390
@@ -260,14 +259,14 @@ class BcolzMinuteBarMetadata(object):
             )
 
     def __init__(
-        self,
-        default_ohlc_ratio,
-        ohlc_ratios_per_sid,
-        calendar,
-        start_session,
-        end_session,
-        minutes_per_day,
-        version=FORMAT_VERSION,
+            self,
+            default_ohlc_ratio,
+            ohlc_ratios_per_sid,
+            calendar,
+            start_session,
+            end_session,
+            minutes_per_day,
+            version=FORMAT_VERSION,
     ):
         self.calendar = calendar
         self.start_session = start_session
@@ -340,10 +339,10 @@ class BcolzMinuteBarMetadata(object):
             'first_trading_day': str(self.start_session.date()),
             'market_opens': (
                 market_opens.values.astype('datetime64[m]').
-                astype(np.int64).tolist()),
+                    astype(np.int64).tolist()),
             'market_closes': (
                 market_closes.values.astype('datetime64[m]').
-                astype(np.int64).tolist()),
+                    astype(np.int64).tolist()),
         }
         with open(self.metadata_path(rootdir), 'w+') as fp:
             json.dump(metadata, fp)
@@ -464,8 +463,7 @@ class BcolzMinuteBarWriter(object):
         self._default_ohlc_ratio = default_ohlc_ratio
         self._ohlc_ratios_per_sid = ohlc_ratios_per_sid
 
-        self._minute_index = _calc_minute_index(
-            self._schedule.market_open, self._minutes_per_day)
+        self._minute_index = calendar.minutes_in_range(self._schedule.market_open[0],self._schedule.market_close[-1])
 
         if write_metadata:
             metadata = BcolzMinuteBarMetadata(
@@ -914,10 +912,10 @@ class BcolzMinuteBarReader(MinuteBarReader):
         )
         self._schedule = self.calendar.schedule[slicer]
         self._market_opens = self._schedule.market_open
-        self._market_open_values = self._market_opens.values.\
+        self._market_open_values = self._market_opens.values. \
             astype('datetime64[m]').astype(np.int64)
         self._market_closes = self._schedule.market_close
-        self._market_close_values = self._market_closes.values.\
+        self._market_close_values = self._market_closes.values. \
             astype('datetime64[m]').astype(np.int64)
 
         self._default_ohlc_inverse = 1.0 / metadata.default_ohlc_ratio
@@ -985,11 +983,14 @@ class BcolzMinuteBarReader(MinuteBarReader):
         List of DatetimeIndex representing the minutes to exclude because
         of early closes.
         """
-        market_opens = self._market_opens.values.astype('datetime64[m]')
-        market_closes = self._market_closes.values.astype('datetime64[m]')
-        minutes_per_day = (market_closes - market_opens).astype(np.int64)
+
+        slicer = self.calendar.schedule.index.slice_indexer(
+            self._start_session,
+            self._end_session,
+        )
+        minutes_per_day = self.calendar._minutes_per_session[slicer]
         early_indices = np.where(
-            minutes_per_day != self._minutes_per_day - 1)[0]
+            minutes_per_day != self._minutes_per_day )[0]
         early_opens = self._market_opens[early_indices]
         early_closes = self._market_closes[early_indices]
         minutes = [(market_open, early_close)
@@ -1256,7 +1257,7 @@ class BcolzMinuteBarReader(MinuteBarReader):
                 if indices_to_exclude is not None:
                     for excl_start, excl_stop in indices_to_exclude[::-1]:
                         excl_slice = np.s_[
-                            excl_start - start_idx:excl_stop - start_idx + 1]
+                                     excl_start - start_idx:excl_stop - start_idx + 1]
                         values = np.delete(values, excl_slice)
 
                 where = values != 0
@@ -1319,9 +1320,9 @@ class H5MinuteBarUpdateWriter(object):
 
     def __init__(self, path, complevel=None, complib=None):
         self._complevel = complevel if complevel \
-            is not None else self._COMPLEVEL
+                                       is not None else self._COMPLEVEL
         self._complib = complib if complib \
-            is not None else self._COMPLIB
+                                   is not None else self._COMPLIB
         self._path = path
 
     def write(self, frames):
@@ -1353,6 +1354,7 @@ class H5MinuteBarUpdateReader(MinuteBarUpdateReader):
     path : str
         The path of the HDF5 file from which to source data.
     """
+
     def __init__(self, path):
         self._panel = pd.read_hdf(path)
 
