@@ -98,6 +98,7 @@ install:
   - pip install -r etc/requirements_blaze.txt --cache-dir=%CACHE_DIR%
   - pip install -r etc/requirements_talib.txt --cache-dir=%CACHE_DIR%
   - pip install -r etc/requirements_ib.txt --cache-dir=%CACHE_DIR%
+  - pip install -r etc/requirements_tdx.txt --cache-dir=%CACHE_DIR%
   - pip install -e .[all] --cache-dir=%CACHE_DIR%
   - pip freeze | sort
 
