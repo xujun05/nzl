@@ -51,7 +51,6 @@ class TdxClient(object):
         elif type == 1:
             return str(self.setting["sh_shareholder_code"])
 
-    @property
     def account_id(self):
         return self.setting["account_id"]
 

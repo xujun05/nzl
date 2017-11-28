@@ -89,8 +89,6 @@ def find_position_of_minute(ndarray[long_t, ndim=1] market_opens,
     if not forward_fill and delta > minutes_per_day:
         raise ValueError("Given minute is not between an open and a close")
 
-    delta = int_min(minute_val - market_open, market_close - market_open)
-
     return (market_open_loc * minutes_per_day) + delta
 
 def find_last_traded_position_internal(

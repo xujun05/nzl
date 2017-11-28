@@ -15,7 +15,7 @@ from zipline.finance.order import (
 )
 from zipline.gens.type import Transaction as TdxTransaction
 from zipline.gens.type import Order as TdxOrder
-from zipline.finance.transaction import Transaction
+from zipline.finance.transaction import Transaction as ZPTransaction
 from zipline.api import symbol
 from zipline.gens.type import *
 import datetime
@@ -202,7 +202,7 @@ class TdxBroker(Broker):
     def _tdx_to_zp_order_id(self, order_id):
         return "TDX-{date}-{account_id}-{order_id}".format(
             date=str(pd.to_datetime('today').date()),
-            account_id=self._client.account_id,
+            account_id=self._client.account_id(),
             order_id=order_id
         )
 
@@ -238,14 +238,13 @@ class TdxBroker(Broker):
             zp_order_id = self._tdx_to_zp_order_id(tdx_order_id)
             self._orders[zp_order_id] = self.tdx_order_to_zipline_order(tdx_order)
 
-    @staticmethod
-    def _tdx_transaction_to_zipline(transaction):
-        return Transaction(
+    def _tdx_transaction_to_zipline(self,transaction):
+        return ZPTransaction(
             asset=symbol(transaction.asset),
             amount=transaction.amount,
             dt=pd.to_datetime(transaction.dt).tz_localize('Asia/Shanghai').tz_convert('UTC'),
             price=transaction.price,
-            order_id=transaction.order_id,
+            order_id=self._tdx_to_zp_order_id(transaction.order_id),
             commission=transaction.commission,
         )
 
@@ -327,6 +326,7 @@ class TdxBroker(Broker):
             self._update_bars()
 
             trade_prices = self._bars[symbol]['price']
+            trade_prices.index = trade_prices.index.tz_localize('Asia/Shanghai').tz_convert('UTC')
             trade_sizes = self._bars[symbol]['vol']
             ohlcv = trade_prices.resample(resample_freq,
                                           label='right',
