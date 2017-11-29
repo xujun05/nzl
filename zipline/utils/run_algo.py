@@ -1,24 +1,23 @@
 import os
 import re
+from runpy import run_path
 import sys
 import warnings
-from runpy import run_path
 
 import click
-
 try:
     from pygments import highlight
     from pygments.lexers import PythonLexer
     from pygments.formatters import TerminalFormatter
-
     PYGMENTS = True
 except:
     PYGMENTS = False
 from toolz import valfilter, concatv
-import zipline.utils.paths as pth
+
 import pandas as pd
 from functools import partial
 
+from zipline.algorithm import TradingAlgorithm
 from zipline.data.bundles.core import load
 from zipline.data.data_portal import DataPortal
 from zipline.finance.trading import TradingEnvironment

@@ -37,6 +37,7 @@ _default_calendar_aliases = {
     'SH': 'SHSZ',
     'SZ': 'SHSZ',
 }
+default_calendar_names = sorted(_default_calendar_factories.keys())
 
 
 class TradingCalendarDispatcher(object):

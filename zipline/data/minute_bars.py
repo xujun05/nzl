@@ -38,7 +38,7 @@ from zipline.data._minute_bar_internal import (
 
 from zipline.gens.sim_engine import NANOS_IN_MINUTE
 
-from zipline.data.bar_reader import BarReader, NoDataOnDate
+from zipline.data.bar_reader import BarReader, NoDataForSid, NoDataOnDate
 from zipline.data.us_equity_pricing import check_uint32_safe
 from zipline.utils.calendars import get_calendar
 from zipline.utils.cli import maybe_show_progress
@@ -90,13 +90,13 @@ def _sid_subdir_path(sid):
     The number in each directory is designed to support at least 100000
     equities.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     sid : int
         Asset identifier.
 
-    Returns:
-    --------
+    Returns
+    -------
     out : string
         A path for the bcolz rootdir, including subdirectory prefixes based on
         the padded string representation of the given sid.
@@ -516,13 +516,13 @@ class BcolzMinuteBarWriter(object):
 
     def sidpath(self, sid):
         """
-        Parameters:
-        -----------
+        Parameters
+        ----------
         sid : int
             Asset identifier.
 
-        Returns:
-        --------
+        Returns
+        -------
         out : string
             Full path to the bcolz rootdir for the given sid.
         """
@@ -531,13 +531,13 @@ class BcolzMinuteBarWriter(object):
 
     def last_date_in_output_for_sid(self, sid):
         """
-        Parameters:
-        -----------
+        Parameters
+        ----------
         sid : int
             Asset identifier.
 
-        Returns:
-        --------
+        Returns
+        -------
         out : pd.Timestamp
             The midnight of the last date written in to the output for the
             given sid.
@@ -560,8 +560,8 @@ class BcolzMinuteBarWriter(object):
         """
         Create empty ctable for given path.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         path : string
             The path to rootdir of the new ctable.
         """
@@ -623,8 +623,8 @@ class BcolzMinuteBarWriter(object):
         including the specified date) will be padded with `minute_per_day`
         worth of zeros
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         sid : int
             The asset identifier for the data being written.
         date : datetime-like
@@ -702,8 +702,8 @@ class BcolzMinuteBarWriter(object):
         If the length of the bcolz ctable is not exactly to the date before
         the first day provided, fill the ctable with 0s up to that date.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         sid : int
             The asset identifer for the data being written.
         df : pd.DataFrame
@@ -735,8 +735,8 @@ class BcolzMinuteBarWriter(object):
         If the length of the bcolz ctable is not exactly to the date before
         the first day provided, fill the ctable with 0s up to that date.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         sid : int
             The asset identifier for the data being written.
         dts : datetime64 array
@@ -762,8 +762,8 @@ class BcolzMinuteBarWriter(object):
         """
         Internal method for `write_cols` and `write`.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         sid : int
             The asset identifier for the data being written.
         dts : datetime64 array
@@ -886,8 +886,8 @@ class BcolzMinuteBarReader(MinuteBarReader):
     """
     Reader for data written by BcolzMinuteBarWriter
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     rootdir : string
         The root directory containing the metadata and asset bcolz
         directories.
@@ -898,7 +898,7 @@ class BcolzMinuteBarReader(MinuteBarReader):
     """
     FIELDS = ('open', 'high', 'low', 'close', 'volume')
 
-    def __init__(self, rootdir, sid_cache_size=1000):
+    def __init__(self, rootdir, sid_cache_size=1550):
         self._rootdir = rootdir
 
         metadata = self._get_metadata()
@@ -979,8 +979,8 @@ class BcolzMinuteBarReader(MinuteBarReader):
         based on the regular period of minutes per day and the market close
         do not match.
 
-        Returns:
-        --------
+        Returns
+        -------
         List of DatetimeIndex representing the minutes to exclude because
         of early closes.
         """
@@ -1059,9 +1059,13 @@ class BcolzMinuteBarReader(MinuteBarReader):
         try:
             carray = self._carrays[field][sid]
         except KeyError:
-            carray = self._carrays[field][sid] = \
-                bcolz.carray(rootdir=self._get_carray_path(sid, field),
-                             mode='r')
+            try:
+                carray = self._carrays[field][sid] = bcolz.carray(
+                    rootdir=self._get_carray_path(sid, field),
+                    mode='r',
+                )
+            except IOError:
+                raise NoDataForSid('No minute data for sid {}.'.format(sid))
 
         return carray
 
@@ -1082,8 +1086,8 @@ class BcolzMinuteBarReader(MinuteBarReader):
         """
         Retrieve the pricing info for the given sid, dt, and field.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         sid : int
             Asset identifier.
         dt : datetime-like
@@ -1092,8 +1096,8 @@ class BcolzMinuteBarReader(MinuteBarReader):
             The type of pricing data to retrieve.
             ('open', 'high', 'low', 'close', 'volume')
 
-        Returns:
-        --------
+        Returns
+        -------
         out : float|int
 
         The market data for the given sid, dt, and field coordinates.
