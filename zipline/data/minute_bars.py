@@ -47,6 +47,7 @@ from zipline.utils.memoize import lazyval
 logger = logbook.Logger('MinuteBars')
 
 US_EQUITIES_MINUTES_PER_DAY = 390
+CN_EQUITIES_MINUTES_PER_DAY = 240
 FUTURES_MINUTES_PER_DAY = 1440
 
 DEFAULT_EXPECTEDLEN = US_EQUITIES_MINUTES_PER_DAY * 252 * 15
