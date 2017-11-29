@@ -1,17 +1,47 @@
 # encoding: UTF-8
 import json
 
-import zipline.lib.tdx_api as tdx_api
 from io import StringIO
-from .type import *
-import logging
 import pandas as pd
-from zipline.utils.util import getJsonPath
-from collections import namedtuple
+import os
 import datetime
+import zerorpc
+import click
+import logging
 from six import PY2
+
 if not PY2:
-    import str as unicode
+    unicode = str
+
+if __name__ == '__main__':
+    from type import *
+    import tdx_api as tdx_api
+else:
+    from .type import *
+    from . import tdx_api as tdx_api
+
+logging.basicConfig()
+
+# JSON配置文件路径
+jsonPathDict = {}
+
+
+def getJsonPath(name, moduleFile):
+    """
+    获取JSON配置文件的路径：
+    1. 优先从当前工作目录查找JSON文件
+    2. 若无法找到则前往模块所在目录查找
+    """
+    currentFolder = os.getcwd()
+    currentJsonPath = os.path.join(currentFolder, name)
+    if os.path.isfile(currentJsonPath):
+        jsonPathDict[name] = currentJsonPath
+        return currentJsonPath
+
+    moduleFolder = os.path.abspath(os.path.dirname(moduleFile))
+    moduleJsonPath = os.path.join(moduleFolder, '.', name)
+    jsonPathDict[name] = moduleJsonPath
+    return moduleJsonPath
 
 
 class TdxClient(object):
@@ -67,8 +97,8 @@ class TdxClient(object):
                 dt=unicode(pd.to_datetime("today").date()) + " " + unicode(row["委托时间"]),
                 # TODO timezone, zerorpc can't serialize datetime
                 symbol=unicode(row["证券代码"]),
-                name=unicode(row["证券名称"],'utf8'),
-                status=unicode(row["状态说明"],'utf8'),
+                name=unicode(row["证券名称"], 'utf8'),
+                status=unicode(row["状态说明"], 'utf8'),
                 price=row["委托价格"],
                 amount=mul * row["委托数量"],
                 order_id=row["委托编号"],
@@ -256,3 +286,32 @@ class TdxClient(object):
         data, err = self.api.Repay(self.clientID, amount)
 
         return self.process_data(data), err
+
+
+@click.command()
+@click.option(
+    '-c',
+    '--config',
+    default='config.json',
+    show_default=True,
+    help='The config file path.',
+)
+@click.option(
+    '-p',
+    '--port',
+    default=4242,
+    show_default=True,
+    help='port number',
+)
+def server(config, port):
+    """
+    Start tdx server.
+    :return:
+    """
+    s = zerorpc.Server(TdxClient(config).login())
+    s.bind("tcp://0.0.0.0:{}".format(port))
+    s.run()
+
+
+if __name__ == '__main__':
+    server()
