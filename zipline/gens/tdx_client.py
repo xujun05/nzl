@@ -20,7 +20,7 @@ else:
     from .type import *
     from . import tdx_api as tdx_api
 
-logging.basicConfig()
+logging.basicConfig(level=logging.INFO)
 
 # JSON配置文件路径
 jsonPathDict = {}
@@ -306,7 +306,7 @@ class TdxClient(object):
 @click.option(
     '-i',
     '--uri',
-    default='127.0.0.1:4242',
+    default='tcp://127.0.0.1:4242',
     show_default=True,
     help='server uri'
 )
@@ -318,8 +318,8 @@ def server(config, port,uri):
     s = zerorpc.Server(TdxClient(config).login())
     if port != 4242:
         uri = "tcp://127.0.0.1:{}".format(port)
-    s.bind(uri)
     logging.info("running server at {}".format(uri))
+    s.bind(uri)
     s.run()
 
 
