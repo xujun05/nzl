@@ -303,15 +303,30 @@ class TdxClient(object):
     show_default=True,
     help='port number',
 )
-def server(config, port):
+@click.option(
+    '-i',
+    '--uri',
+    default='127.0.0.1:4242',
+    show_default=True,
+    help='server uri'
+)
+def server(config, port,uri):
     """
     Start tdx server.
     :return:
     """
     s = zerorpc.Server(TdxClient(config).login())
-    s.bind("tcp://0.0.0.0:{}".format(port))
+    if port != 4242:
+        uri = "tcp://127.0.0.1:{}".format(port)
+    s.bind(uri)
+    logging.info("running server at {}".format(uri))
     s.run()
 
+
+r'''
+create a tdx_client.exe with the following command:
+ C:\Users\fit\Anaconda2\Scripts\pyinstaller --onefile --path C:\Users\fit\Anaconda2\Lib\site-packages\scipy\extra-dll --path C:\Users\fit\Anaconda2\Lib\site-packages\zmq .\tdx_client.py
+'''
 
 if __name__ == '__main__':
     server()
