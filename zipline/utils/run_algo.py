@@ -31,7 +31,7 @@ from zipline.data.data_portal_live import DataPortalLive
 from zipline.data.cn_loader import load_market_data
 from zipline.algorithm_live import LiveTradingAlgorithm
 from zipline.algorithm import TradingAlgorithm
-
+import zipline.utils.paths as pth
 
 class _RunAlgoError(click.ClickException, ValueError):
     """Signal an error that should have a different message if invoked from
