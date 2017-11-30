@@ -47,7 +47,7 @@ zipline-live
     win32 python：将配置文件以及dll放入策略所在目录，修改配置文件名（默认应为config.json，见live_strategy）,然后运行live_strategy。
 
   情况2：
-    其它环境（win64 python或者linux python）：将配置文件、dll以及zipline/lib/tdx_client.exe放到同一目录，并运行tdx_client.exe，然后在live_strategy中修改相应的uri，然后运行live_strategy。
+    其它环境（win64 python或者linux python）：将配置文件、dll以及tdx_client.exe(文件过大无法上传到git，见QQ群文件)放到同一目录，并运行tdx_client.exe，然后在live_strategy中修改相应的uri，运行live_strategy。
 
 
 使用
