@@ -1,16 +1,16 @@
 # coding=utf-8
 
 from zipline.api import order, record, symbol
-
+import platform
 
 def initialize(context):
-    context.smb = symbol('513030')
+    context.smb = symbol('601118')
 
 
 def handle_data(context, data):
     can_trade = data.can_trade(context.smb)
-    hist = data.history(context.smb, bar_count=20, frequency='1m', fields='open')
-    print(context.current_dt, hist)
+    hist = data.history(symbol('601118'), bar_count=20, frequency='1m', fields='open')
+    print(hist)
 
 
 if __name__ == '__main__':
@@ -20,14 +20,17 @@ if __name__ == '__main__':
     import pandas as pd
     import os
 
-    client_uri = "tcp://127.0.0.1:4242"
+    if platform.architecture()[0] == '32bit':
+        client_uri = 'config.json'
+    else:
+        client_uri = "tcp://127.0.0.1:4242"
     broker = TdxBroker(client_uri)
     if not os.path.exists('tmp'):
         os.mkdir('tmp')
     realtime_bar_target = 'tmp/real-bar-{}'.format(str(pd.to_datetime('today').date()))
     state_filename = 'tmp/live-state'
 
-    start = Date(tz='utc', as_timestamp=True).parser('2017-10-15')
+    start = Date(tz='utc', as_timestamp=True).parser('2017-03-01')
 
     end = Date(tz='utc', as_timestamp=True).parser('2017-11-01')
 

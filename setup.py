@@ -292,7 +292,6 @@ setup(
     entry_points={
         'console_scripts': [
             'zipline = zipline.__main__:main',
-            'tdxserver = zipline.server:server',
         ],
     },
     author='Jayson',

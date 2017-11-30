@@ -11,174 +11,93 @@
 |travis status|
 |appveyor status|
 |Coverage Status|
-
-Zipline is a Pythonic algorithmic trading library. It is an event-driven
-system that supports both backtesting and live-trading. Zipline is currently used in production as the backtesting and live-trading
-engine powering `Quantopian <https://www.quantopian.com>`_ -- a free,
-community-centered, hosted platform for building and executing trading
-strategies.
-
-- `Join our community! <https://groups.google.com/forum/#!forum/zipline>`_
-- `Documentation <http://www.zipline.io>`_
-- Want to contribute? See our `development guidelines <http://zipline.io/development-guidelines.html>`_
-
-Features
-========
-
-- Ease of use: Zipline tries to get out of your way so that you can
-  focus on algorithm development. See below for a code example.
-- Zipline comes "batteries included" as many common statistics like
-  moving average and linear regression can be readily accessed from
-  within a user-written algorithm.
-- Input of historical data and output of performance statistics are
-  based on Pandas DataFrames to integrate nicely into the existing
-  PyData eco-system.
-- Statistic and machine learning libraries like matplotlib, scipy,
-  statsmodels, and sklearn support development, analysis, and
-  visualization of state-of-the-art trading systems.
-
-Installation
-============
-
-Installing With ``pip``
------------------------
-
-Assuming you have all required (see note below) non-Python dependencies, you
-can install Zipline with ``pip`` via:
-
-.. code-block:: bash
-
-    $ pip install zipline
-
-**Note:** Installing Zipline via ``pip`` is slightly more involved than the
-average Python package.  Simply running ``pip install zipline`` will likely
-fail if you've never installed any scientific Python packages before.
+|Apache License|
 
 There are two reasons for the additional complexity:
 
-1. Zipline ships several C extensions that require access to the CPython C API.
-   In order to build the C extensions, ``pip`` needs access to the CPython
-   header files for your Python installation.
 
-2. Zipline depends on `numpy <http://www.numpy.org/>`_, the core library for
-   numerical array computing in Python.  Numpy depends on having the `LAPACK
-   <http://www.netlib.org/lapack>`_ linear algebra routines available.
+`zipline <http://zipline.io/>`_ 是美国 `Quantopian <https://quantopian.com/>`_ 公司开源的量化交易回测引擎，它使用 ``Python`` 语言开发，
+部分代码使用 ``cython`` 融合了部分c语言代码。 ``Quantopian`` 在它的网站上的回测系统就是基于 ``zipline`` 的，
+经过生产环境的长期使用，已经比完善，并且在持续的改进中。
 
-Because LAPACK and the CPython headers are binary dependencies, the correct way
-to install them varies from platform to platform.  On Linux, users generally
-acquire these dependencies via a package manager like ``apt``, ``yum``, or
-``pacman``.  On OSX, `Homebrew <http://www.brew.sh>`_ is a popular choice
-providing similar functionality.
-
-See the full `Zipline Install Documentation`_ for more information on acquiring
-binary dependencies for your specific platform.
-
-conda
------
-
-Another way to install Zipline is via the ``conda`` package manager, which
-comes as part of `Anaconda <http://continuum.io/downloads>`_ or can be
-installed via ``pip install conda``.
-
-Once set up, you can install Zipline from our ``Quantopian`` channel:
-
-.. code-block:: bash
-
-    $ conda install -c Quantopian zipline
-
-Currently supported platforms include:
-
--  GNU/Linux 64-bit
--  OSX 64-bit
--  Windows 64-bit
-
-.. note::
-
-   Windows 32-bit may work; however, it is not currently included in
-   continuous integration tests.
-
-Quickstart
-==========
-
-See our `getting started tutorial <http://www.zipline.io/beginner-tutorial.html>`_.
-
-The following code implements a simple dual moving average algorithm.
-
-.. code:: python
-
-    from zipline.api import order_target, record, symbol
-
-    def initialize(context):
-        context.i = 0
-        context.asset = symbol('AAPL')
+``zipline`` 的基本使用方法在 https://www.quantopian.com/tutorials/getting-started/ ,对于zipline的深度解析，可以看大神 `rainx <https://github.com/rainx>`_ 写的 `文档 <https://www.gitbook.com/book/rainx/-zipline/details>`_ ，本项目中的大部分依赖项目也都是rainx开发的项目
 
 
-    def handle_data(context, data):
-        # Skip first 300 days to get full windows
-        context.i += 1
-        if context.i < 300:
-            return
+数据源
+--------
 
-        # Compute averages
-        # data.history() has to be called with the same params
-        # from above and returns a pandas dataframe.
-        short_mavg = data.history(context.asset, 'price', bar_count=100, frequency="1d").mean()
-        long_mavg = data.history(context.asset, 'price', bar_count=300, frequency="1d").mean()
+``cn-zipline-live`` 的历史k线以及除息除权数据来自通达信，数据接口来自项目github 项目 `tdx <https://github.com/JaysonAlbert/tdx>`_
 
-        # Trading logic
-        if short_mavg > long_mavg:
-            # order_target orders as many shares as needed to
-            # achieve the desired number of shares.
-            order_target(context.asset, 100)
-        elif short_mavg < long_mavg:
-            order_target(context.asset, 0)
+安装
+----------
 
-        # Save values for later inspection
-        record(AAPL=data.current(context.asset, 'price'),
-               short_mavg=short_mavg,
-               long_mavg=long_mavg)
+    pip install cn-zipline-live
 
 
-You can then run this algorithm using the Zipline CLI. From the command
-line, run:
+实盘
+----------
 
-.. code:: bash
+1. 配置:
 
-    $ zipline ingest
-    $ zipline run -f dual_moving_average.py --start 2011-1-1 --end 2012-1-1 -o dma.pickle
+  准备好配置文件zipline/gens/example_config.json, 以及trader.dll
 
-This will download the AAPL price data from `quantopian-quandl` in the
-specified time range and stream it through the algorithm and save the
-resulting performance dataframe to dma.pickle which you can then load
-and analyze from within Python.
+2. 运行：
 
-You can find other examples in the ``zipline/examples`` directory.
+  情况1：
+    win32 python：将配置文件以及dll放入策略所在目录，修改配置文件名（默认应为config.json，见live_strategy）,然后运行live_strategy。
 
-Questions?
-==========
+  情况2：
+    其它环境（win64 python或者linux python）：将配置文件、dll以及tdx_client.exe(文件过大无法上传到git，见QQ群文件)放到同一目录，并运行tdx_client.exe，然后在live_strategy中修改相应的uri，运行live_strategy。
 
-If you find a bug, feel free to `open an issue <https://github.com/quantopian/zipline/issues/new>`_ and fill out the issue template.
 
-Contributing
-============
+使用
+----------
 
-All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome. Details on how to set up a development environment can be found in our `development guidelines <http://zipline.io/development-guidelines.html>`_.
+cn-zipline-live与zipline大同小异，具体使用方法请参考zipline `官方文档 <https://www.quantopian.com/tutorials/getting-started>`_ 。
 
-If you are looking to start working with the Zipline codebase, navigate to the GitHub `issues` tab and start looking through interesting issues. Sometimes there are issues labeled as `Beginner Friendly <https://github.com/quantopian/zipline/issues?q=is%3Aissue+is%3Aopen+label%3A%22Beginner+Friendly%22>`_ or `Help Wanted <https://github.com/quantopian/zipline/issues?q=is%3Aissue+is%3Aopen+label%3A%22Help+Wanted%22>`_.
 
-Feel free to ask questions on the `mailing list <https://groups.google.com/forum/#!forum/zipline>`_ or on `Gitter <gitter.im/quantopian/zipline>`_.
+一、ingest数据：
+-----------
+
+    zipline ingest -b tdx -a assets.csv --minute False --start 20170901 --overwrite True
+
+``-a assets.csv`` 指定需要 ``ingest`` 的代码列表，缺省ingest 4000+只所有股票，耗时长达3、4小时，通过 ``-a tests/ETF.csv`` 只ingest ETF基金数据，一方面可以节省时间达到快速测试的目的。
+另一方面可以通过这种方法ingest非股票数据，例如etf基金。
+
+``--minute False`` 是否ingest分钟数据
+
+``--start 20170901`` 数据开始日期，默认为1991年
+
+``--overwrite True`` 由于分钟数据获取速度较慢，默认start至今超过3年的话，只拿3年数据，日线数据依然以start为准，overwrite为True时，强制拿从start开始  至今的分钟数据
+
+
+二、编写策略以及运行策略：
+-----------
+
+请参考目录: ``zipline/examples``
+
+
+问题
+--------------
+
+如有任何问题，欢迎大家提交 `issue <https://github.com/JaysonAlbert/zipline/issues/new/>`_ ，反馈bug，以及提出改进建议。
+
+其它
+--------------
+对量化感兴趣的朋友，以及想更方便的交流朋友，请加QQ群434588628
 
 
 
-.. |Gitter| image:: https://badges.gitter.im/Join%20Chat.svg
-   :target: https://gitter.im/quantopian/zipline?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-.. |version status| image:: https://img.shields.io/pypi/pyversions/zipline.svg
-   :target: https://pypi.python.org/pypi/zipline
-.. |travis status| image:: https://travis-ci.org/quantopian/zipline.png?branch=master
-   :target: https://travis-ci.org/quantopian/zipline
-.. |appveyor status| image:: https://ci.appveyor.com/api/projects/status/3dg18e6227dvstw6/branch/master?svg=true
-   :target: https://ci.appveyor.com/project/quantopian/zipline/branch/master
-.. |Coverage Status| image:: https://coveralls.io/repos/quantopian/zipline/badge.png
-   :target: https://coveralls.io/r/quantopian/zipline
+.. |pypi badge| image:: https://badge.fury.io/py/cn-zipline-live.svg
+    :target: https://pypi.python.org/pypi/cn-zipline-live
+.. |travis status| image:: https://travis-ci.org/JaysonAlbert/zipline.svg?branch=master
+    :target: https://travis-ci.org/JaysonAlbert/zipline
+.. |appveyor status| image:: https://ci.appveyor.com/api/projects/status/fc6rgyckxj445uf5?svg=true
+   :target: https://ci.appveyor.com/project/JaysonAlbert/zipline/branch/master
+.. |Coverage Status| image:: https://coveralls.io/repos/github/JaysonAlbert/zipline/badge.svg?branch=master
+   :target: https://coveralls.io/github/JaysonAlbert/zipline?branch=master
+.. |Apache License| image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
+   :target: https://www.apache.org/licenses/LICENSE-2.0
+
 
 .. _`Zipline Install Documentation` : http://www.zipline.io/install.html
