@@ -36,7 +36,18 @@ zipline-live
 
 实盘
 ----------
-实盘部分代码正在测试中，请参考 `issue <https://github.com/JaysonAlbert/zipline/issues/1>`_
+
+1. 配置:
+
+  准备好配置文件zipline/gens/example_config.json, 以及trader.dll
+
+2. 运行：
+
+  情况1：
+    win32 python：将配置文件以及dll放入策略所在目录，修改配置文件名（默认应为config.json，见live_strategy）,然后运行live_strategy。
+
+  情况2：
+    其它环境（win64 python或者linux python）：将配置文件、dll以及zipline/lib/tdx_client.exe放到同一目录，并运行tdx_client.exe，然后在live_strategy中修改相应的uri，然后运行live_strategy。
 
 
 使用
