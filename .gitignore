@@ -11,6 +11,7 @@ tmp/*
 *.py[co]
 
 *.dll
+*.exe
 
 *.json
 
