@@ -80,9 +80,11 @@ def _run(handle_data,
 
     This is shared between the cli and :func:`zipline.run_algo`.
     """
+
+
     if algotext is not None:
         if local_namespace:
-            ip = get_ipython()  # noqa
+            ip = get_ipython() # noqa
             namespace = ip.user_ns
         else:
             namespace = {}
@@ -149,7 +151,6 @@ def _run(handle_data,
         env = TradingEnvironment(load=load_market_data, bm_symbol='000300', asset_db_path=connstr, environ=environ)
         first_trading_day = \
             bundle_data.equity_minute_bar_reader.first_trading_day
-
         DataPortalClass = (partial(DataPortalLive, broker)
                            if broker
                            else DataPortal)
