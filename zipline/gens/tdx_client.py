@@ -72,6 +72,9 @@ class TdxClient(object):
                                             str(self.setting["trade_account"]),
                                             str(self.setting["trade_password"]),
                                             str(self.setting["communication_password"]))
+        if err != '':
+            logging.error(err)
+            exit(-1)
         return self
 
     def get_shareholder(self, stock):
