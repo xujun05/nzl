@@ -1,5 +1,4 @@
   {
-      "name": "",
       "account_id": "",
       "trade_account": "",
       "trade_password": "",
@@ -10,6 +9,6 @@
       "port": 80,
       "version": "8.095",
       "yybID": 0,
-      "dll_path": "zipline/lib/cn/gf_fund.dll",
-      "broker" : "gfzq"
+      "dll_path": "zipline/lib/cn/gf_fund.dll"
   }
+  
