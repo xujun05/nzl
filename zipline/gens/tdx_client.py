@@ -155,7 +155,6 @@ class TdxClient(object):
         return self._transactions(start_date, end_date)
 
     # return 1 if sh, 0 if sz
-    @staticmethod
     def get_stock_type(self, stock):
         one = stock[0]
         if one == '5' or one == '6' or one == '9':
