@@ -49,7 +49,7 @@ def fetch_symbols(engine, assets=None):
 
 
 def fetch_single_equity(engine, symbol, start=None, end=None, freq='1d'):
-    df = engine.get_security_bars(symbol, freq,start,end)
+    df = engine.get_security_bars(symbol, freq, start, end)
     df['volume'] = df['vol'].astype(np.int32) * 100  # hands * 100 == shares
 
     if freq == '1d':
@@ -63,24 +63,41 @@ def fetch_single_equity(engine, symbol, start=None, end=None, freq='1d'):
     return df.drop(['vol', 'amount', 'code'], axis=1)
 
 
-def fetch_splits_and_dividends(engine, symbols,start=None,end=None):
-    mask = engine.gbbq.code.isin(symbols['symbol']) & (engine.gbbq.peigu_houzongguben == 0)
-    gbbq = engine.gbbq[mask]
-    sid = gbbq.code.values.astype('int64')
+def fetch_single_split_and_dividend(engine, symbol):
+    df = engine.xdxr(symbol)
+    if df.empty:
+        return df
+    df = df[(df.category == 1) & (df.peigu == 0)]
+    if df.empty:
+        return df
     splits = pd.DataFrame({
-        'sid': sid,
-        'effective_date': gbbq.datetime,
-        'ratio': 10 / (10 + gbbq.songgu_qianzongguben)
+        'sid': int(symbol),
+        'effective_date': df.index,
+        'ratio': 10 / (10 + df.songzhuangu)
     })
 
     dividends = pd.DataFrame({
-        'sid': sid,
-        'ex_date': gbbq.datetime,
-        'amount': gbbq.hongli_panqianliutong / 10,
+        'sid': int(symbol),
+        'ex_date': df.index,
+        'amount': df.fenhong / 10,
         'record_date': pd.NaT,
         'declared_date': pd.NaT,
         'pay_date': pd.NaT
     })
+
+    return splits, dividends
+
+
+def fetch_splits_and_dividends(engine, symbols, start=None, end=None):
+    all_splits = []
+    all_dividends = []
+    for symbol in symbols['symbol']:
+        split, dividend = fetch_single_split_and_dividend(engine, symbol)
+        all_splits.append(split)
+        all_dividends.append(dividend)
+
+    splits = pd.concat(all_splits)
+    dividends = pd.concat(all_dividends)
     if start:
         dividends = dividends[dividends.ex_date >= start]
         splits = splits[splits.effective_date >= start]
@@ -144,7 +161,7 @@ def tdx_bundle(assets,
     symbols = fetch_symbols(eg, assets)
     metas = []
 
-    today = pd.to_datetime('today',utc=True)
+    today = pd.to_datetime('today', utc=True)
     distance = calendar.session_distance(start_session, today)
     if ingest_minute and not overwrite and (start_session < today - pd.DateOffset(years=3)):
         minute_start = calendar.all_sessions[searchsorted(calendar.all_sessions, today - pd.DateOffset(years=3))]
@@ -188,7 +205,7 @@ def tdx_bundle(assets,
             minute_bar_writer.write(bar, show_progress=False)
 
     symbols = pd.concat([symbols, pd.DataFrame(data=metas)], axis=1)
-    splits, dividends = fetch_splits_and_dividends(eg, symbols,start_session,end_session)
+    splits, dividends = fetch_splits_and_dividends(eg, symbols, start_session, end_session)
     symbols.set_index('symbol', drop=False, inplace=True)
     asset_db_writer.write(symbols)
     adjustment_writer.write(
@@ -211,7 +228,7 @@ def register_tdx(assets=None, minute=False, start=None, overwrite=False, end=Non
     bundles.register('tdx', partial(tdx_bundle, assets, minute, overwrite), 'SHSZ', start, end, minutes_per_day=240)
 
 
-bundles.register('tdx', partial(tdx_bundle, None, False, False),minutes_per_day=240)
+bundles.register('tdx', partial(tdx_bundle, None, False, False), minutes_per_day=240)
 
 if __name__ == '__main__':
     eg = Engine(auto_retry=True, multithread=True, thread_num=8)
