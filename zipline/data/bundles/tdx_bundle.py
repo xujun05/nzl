@@ -49,7 +49,7 @@ def fetch_symbols(engine, assets=None):
 
 
 def fetch_single_equity(engine, symbol, start=None, end=None, freq='1d'):
-    df = engine.get_security_bars(symbol, freq)
+    df = engine.get_security_bars(symbol, freq,start,end)
     df['volume'] = df['vol'].astype(np.int32) * 100  # hands * 100 == shares
 
     if freq == '1d':
