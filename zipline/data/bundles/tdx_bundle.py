@@ -63,7 +63,7 @@ def fetch_single_equity(engine, symbol, start=None, end=None, freq='1d'):
     return df.drop(['vol', 'amount', 'code'], axis=1)
 
 
-def fetch_splits_and_dividends(engine, symbols):
+def fetch_splits_and_dividends(engine, symbols,start=None,end=None):
     mask = engine.gbbq.code.isin(symbols['symbol']) & (engine.gbbq.peigu_houzongguben == 0)
     gbbq = engine.gbbq[mask]
     sid = gbbq.code.values.astype('int64')
@@ -81,6 +81,12 @@ def fetch_splits_and_dividends(engine, symbols):
         'declared_date': pd.NaT,
         'pay_date': pd.NaT
     })
+    if start:
+        dividends = dividends[dividends.ex_date >= start]
+        splits = splits[splits.effective_date >= start]
+    if end:
+        dividends = dividends[dividends.ex_date < end]
+        splits = splits[splits.effective_date < end]
     return splits[splits.ratio != 1], dividends[dividends.amount != 0]
 
 
@@ -182,7 +188,7 @@ def tdx_bundle(assets,
             minute_bar_writer.write(bar, show_progress=False)
 
     symbols = pd.concat([symbols, pd.DataFrame(data=metas)], axis=1)
-    splits, dividends = fetch_splits_and_dividends(eg, symbols)
+    splits, dividends = fetch_splits_and_dividends(eg, symbols,start_session,end_session)
     symbols.set_index('symbol', drop=False, inplace=True)
     asset_db_writer.write(symbols)
     adjustment_writer.write(
