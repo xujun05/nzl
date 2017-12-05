@@ -66,10 +66,10 @@ def fetch_single_equity(engine, symbol, start=None, end=None, freq='1d'):
 def fetch_single_split_and_dividend(engine, symbol):
     df = engine.xdxr(symbol)
     if df.empty:
-        return df,df
+        return pd.DataFrame(),pd.DataFrame()
     df = df[(df.category == 1) & (df.peigu == 0)]
     if df.empty:
-        return df,df
+        return pd.DataFrame(),pd.DataFrame()
     splits = pd.DataFrame({
         'sid': int(symbol),
         'effective_date': df.index,
