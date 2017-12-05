@@ -15,6 +15,8 @@ from zipline.finance.order import (
 )
 from zipline.gens.type import Transaction as TdxTransaction
 from zipline.gens.type import Order as TdxOrder
+from zipline.gens.type import Position as TdxPosition
+from zipline.gens.type import Portfolio as TdxPortfolio
 from zipline.finance.transaction import Transaction as ZPTransaction
 from zipline.api import symbol
 from zipline.gens.type import *
@@ -82,13 +84,15 @@ class TdxBroker(Broker):
     def positions(self):
         now = datetime.datetime.now()
         z_positions = protocol.Positions()
-        for row in self._client.query_data(SHARES).iteritems():
-            sid = row["证券代码"].values[0]
-            available = row["可用数量"].values[0]
+        for pos in self._client.positions():
+            if isinstance(pos,list):
+                pos = TdxPosition(*pos)
+            sid = pos.sid
+            available = pos.available
             z_position = protocol.Position(symbol(sid))
-            z_position.amount = row["证券数量"].values[0]
-            z_position.cost_basis = row["成本价"].values[0]
-            z_position.last_sale_price = row["当前价"].values[0]
+            z_position.amount = pos.amount
+            z_position.cost_basis = pos.cost_basis
+            z_position.last_sale_price = pos.last_sale_price
             z_position.last_sale_date = now
             z_positions[symbol(sid)] = z_position
 
@@ -97,16 +101,18 @@ class TdxBroker(Broker):
     @property
     def portfolio(self):
         z_portfolio = protocol.Portfolio()
-        data = self._client.query_data(BALANCE)
+        pfo = self._client.portfolio()
+        if isinstance(pfo,list):
+            pfo = TdxPortfolio(*pfo)
         z_portfolio.capital_used = None  # TODO
         z_portfolio.starting_cash = None
-        z_portfolio.portfolio_value = data[" 总资产"].values[0]
+        z_portfolio.portfolio_value = pfo.portfolio_value
         z_portfolio.pnl = None
         z_portfolio.returns = None
-        z_portfolio.cash = data["可用资金"].values[0]
+        z_portfolio.cash = pfo.cash
         z_portfolio.start_date = None
         z_portfolio.positions = self.positions
-        z_portfolio.positions_value = data["最新市值"].values[0]
+        z_portfolio.positions_value = pfo.positions_value
         z_portfolio.position_exposure = z_portfolio.positions_value / (z_portfolio.positions_value + z_portfolio.cash)
 
         return z_portfolio

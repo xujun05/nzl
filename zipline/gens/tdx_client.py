@@ -9,6 +9,8 @@ import zerorpc
 import click
 import logging
 from six import PY2
+from weakref import WeakKeyDictionary
+from functools import wraps
 
 if not PY2:
     unicode = str
@@ -44,13 +46,44 @@ def getJsonPath(name, moduleFile):
     return moduleJsonPath
 
 
+class remember_a_while(object):
+    def __init__(self, get):
+        self._get = get
+        self._cache = WeakKeyDictionary()
+        self._access_time = None
+        self.interval = pd.Timedelta('1 S')
+
+    def __get__(self, instance, owner):
+        @wraps(self._get)
+        def fun():
+            if instance is None:
+                return self
+            now = pd.to_datetime('now')
+            if self._access_time and now < self._access_time + self.interval:
+                return self._cache[instance]
+            self._cache[instance] = val = self._get(instance)
+            self._access_time = now
+            return val
+
+        return fun
+
+    def __set__(self, instance, value):
+        raise AttributeError("Can't set read-only attribute.")
+
+    def __delitem__(self, instance):
+        del self._cache[instance]
+
+
 class TdxClient(object):
     setting = None
     api = None
     clientID = None
 
     orderID = pd.DataFrame()
-    orderStrategyDict = {}
+    _last_request_time = None
+    _request_interval = pd.Timedelta('1 S')
+    _remembered = {}
+    _buffer = {}
 
     def __init__(self, config_path=''):
         assert config_path != ''
@@ -75,6 +108,7 @@ class TdxClient(object):
         if err != '':
             logging.error(err)
             exit(-1)
+        print(self.portfolio())
         return self
 
     def get_shareholder(self, stock):
@@ -153,9 +187,35 @@ class TdxClient(object):
             )
         return rt
 
+    @remember_a_while
     def transactions(self):
         start_date = end_date = pd.to_datetime('today').strftime('%Y%m%d')
         return self._transactions(start_date, end_date)
+
+    @remember_a_while
+    def positions(self):
+        rt = []
+        data, err = self.query_data(SHARES)
+        for row in data.T.iteritems():
+            rt.append(
+                Position(
+                    sid=row["证券代码"],
+                    available=row["可用数量"],
+                    amount=row["证券数量"],
+                    cost_basis=row["成本价"],
+                    last_sale_price=row["当前价"])
+            )
+        return rt
+
+    @remember_a_while
+    def portfolio(self):
+        data, err = self.query_data(BALANCE)
+        ptf = Portfolio(
+            portfolio_value=data["总资产"].values[0],
+            cash=data["可用资金"].values[0],
+            positions_value=data["最新市值"].values[0]
+        )
+        return ptf
 
     # return 1 if sh, 0 if sz
     def get_stock_type(self, stock):
@@ -312,7 +372,7 @@ class TdxClient(object):
     show_default=True,
     help='server uri'
 )
-def server(config, port,uri):
+def server(config, port, uri):
     """
     Start tdx server.
     :return:
