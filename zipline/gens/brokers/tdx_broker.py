@@ -85,7 +85,7 @@ class TdxBroker(Broker):
         now = datetime.datetime.now()
         z_positions = protocol.Positions()
         for pos in self._client.positions():
-            if isinstance(pos,list):
+            if isinstance(pos, list):
                 pos = TdxPosition(*pos)
             sid = pos.sid
             available = pos.available
@@ -102,7 +102,7 @@ class TdxBroker(Broker):
     def portfolio(self):
         z_portfolio = protocol.Portfolio()
         pfo = self._client.portfolio()
-        if isinstance(pfo,list):
+        if isinstance(pfo, list):
             pfo = TdxPortfolio(*pfo)
         z_portfolio.capital_used = None  # TODO
         z_portfolio.starting_cash = None
@@ -134,7 +134,7 @@ class TdxBroker(Broker):
     def time_skew(self):
         return pd.Timedelta('1 S')
 
-    def order(self, asset, amount, limit_price, stop_price, style):
+    def order(self, asset, amount, style):
         raise NotImplemented("can not test order yet")
         code = asset.symbol
 
@@ -143,19 +143,20 @@ class TdxBroker(Broker):
         else:
             action = SELL
 
+        is_busy = (amount > 0)
         if isinstance(style, MarketOrder):
             order_type = FIVE_LEVEL_MARKET_ORDER
+            price = 0.0
         elif isinstance(style, LimitOrder):
             order_type = LIMIT_CHARGE
+            price = style.get_limit_price(is_buy)
         elif isinstance(style, StopOrder):
             raise Exception("stop order is not supported")
         elif isinstance(style, StopLimitOrder):
             raise Exception("stop limit order is not supported")
 
-        price = limit_price or 0.0
-
         data, err = self._client.order(code, abs(amount), price, action, order_type)
-        order_id = data["委托编号"].values[0]
+        order_id = data["id"]
         zp_order = self._get_or_create_zp_order(order_id)
 
         log.info("Placing order-{order_id}: "
@@ -233,7 +234,7 @@ class TdxBroker(Broker):
             limit=order.price,  # TODO 市价单和限价单
             id=zp_order_id,
         )
-        od.broker_order_id=order.order_id
+        od.broker_order_id = order.order_id
         od.status = zp_status
 
         return od
@@ -246,7 +247,7 @@ class TdxBroker(Broker):
             zp_order_id = self._tdx_to_zp_order_id(tdx_order_id)
             self._orders[zp_order_id] = self.tdx_order_to_zipline_order(tdx_order)
 
-    def _tdx_transaction_to_zipline(self,transaction):
+    def _tdx_transaction_to_zipline(self, transaction):
         return ZPTransaction(
             asset=symbol(transaction.asset),
             amount=transaction.amount,

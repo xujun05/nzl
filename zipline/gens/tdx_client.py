@@ -108,7 +108,6 @@ class TdxClient(object):
         if err != '':
             logging.error(err)
             exit(-1)
-        print(self.portfolio())
         return self
 
     def get_shareholder(self, stock):
@@ -319,8 +318,14 @@ class TdxClient(object):
     # order one
     def order(self, code, number, price, action, order_type):
         shareholder = self.get_shareholder(code)
+        if isinstance(code,unicode):
+            code = str(code)
         data, err = self.api.SendOrders(self.clientID, [action], [order_type], [shareholder], [code], [price], [number])
-        return self.process_data(data), err
+        data = self.process_data(data)
+        return {
+            "id":data["委托编号"].values[0],
+            "message":data["返回信息"].values[0],
+        },err
 
     ### hth 委托编号
     ### jys 交易所编号
