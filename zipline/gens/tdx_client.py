@@ -330,11 +330,16 @@ class TdxClient(object):
     ### hth 委托编号
     ### jys 交易所编号
     def cancel_orders(self, jys, hth):
+        if isinstance(hth,unicode):
+            hth = str(hth)
+        if not isinstance(jys,str):
+            jys = str(jys)
+        if self.setting['broker'] == "zszq" and jys == '0':
+            jys = '2'
         if not isinstance(hth, list):
             hth = [hth]
             jys = [jys]
-        data, err = self.api.CancelOrders(jys, hth)
-        return self.process_data(data), err
+        self.api.CancelOrders(self.clientID,jys, hth)
 
     def get_quotes(self, code):
         if not isinstance(code, list):

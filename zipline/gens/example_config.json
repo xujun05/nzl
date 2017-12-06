@@ -9,6 +9,7 @@
       "port": 80,
       "version": "8.095",
       "yybID": 0,
-      "dll_path": "trade.dll"
+      "dll_path": "trade.dll",
+      "broker": "gfzq"
   }
   
