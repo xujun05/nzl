@@ -11,6 +11,7 @@ import logging
 from six import PY2
 from weakref import WeakKeyDictionary
 from functools import wraps
+import sys
 
 if not PY2:
     unicode = str  # 兼容python3 rpc 请求 python2的string
@@ -107,7 +108,7 @@ class TdxClient(object):
                                             str(self.setting["communication_password"]))
         if err != '':
             logging.error(err)
-            exit(-1)
+            sys.exit(-1)
         return self
 
     def get_shareholder(self, stock):
