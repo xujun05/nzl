@@ -17,6 +17,7 @@ from zipline.gens.type import Transaction as TdxTransaction
 from zipline.gens.type import Order as TdxOrder
 from zipline.gens.type import Position as TdxPosition
 from zipline.gens.type import Portfolio as TdxPortfolio
+from zipline.gens.type import OrderRt
 from zipline.finance.transaction import Transaction as ZPTransaction
 from zipline.api import symbol
 from zipline.gens.type import *
@@ -135,7 +136,6 @@ class TdxBroker(Broker):
         return pd.Timedelta('1 S')
 
     def order(self, asset, amount, style):
-        raise NotImplemented("can not test order yet")
         code = asset.symbol
 
         if amount > 0:
@@ -149,14 +149,16 @@ class TdxBroker(Broker):
             price = 0.0
         elif isinstance(style, LimitOrder):
             order_type = LIMIT_CHARGE
-            price = style.get_limit_price(is_buy)
+            price = style.get_limit_price(is_busy)
         elif isinstance(style, StopOrder):
             raise Exception("stop order is not supported")
         elif isinstance(style, StopLimitOrder):
             raise Exception("stop limit order is not supported")
 
         data, err = self._client.order(code, abs(amount), price, action, order_type)
-        order_id = data["id"]
+        if isinstance(data,list):
+            data = OrderRt(*data)
+        order_id = str(data.order_id)
         zp_order = self._get_or_create_zp_order(order_id)
 
         log.info("Placing order-{order_id}: "

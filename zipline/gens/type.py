@@ -49,6 +49,11 @@ Order = namedtuple("Order", [
     'filled',
 ])
 
+OrderRt = namedtuple("OrderRt",[
+    "order_id",
+    "message",
+])
+
 Transaction = namedtuple("Transaction", [
     "id",
     'asset',

@@ -13,7 +13,7 @@ from weakref import WeakKeyDictionary
 from functools import wraps
 
 if not PY2:
-    unicode = str
+    unicode = str  # 兼容python3 rpc 请求 python2的string
 
 if __name__ == '__main__':
     from type import *
@@ -125,9 +125,9 @@ class TdxClient(object):
         df = self.process_data(df)
         rt = {}
         for index, row in df.T.iteritems():
-            if row["报价方式"] != "买卖":
+            if row["报价方式"] not in ["买卖","限价"]:
                 continue
-            order_id = row["委托编号"]
+            order_id = unicode(row["委托编号"])
             mul = -1 if row["买卖标志"] == 1 else 1
             rt[order_id] = Order(
                 dt=unicode(pd.to_datetime("today").date()) + " " + unicode(row["委托时间"]),
@@ -137,7 +137,7 @@ class TdxClient(object):
                 status=unicode(row["状态说明"], 'utf8'),
                 price=row["委托价格"],
                 amount=mul * row["委托数量"],
-                order_id=row["委托编号"],
+                order_id=order_id,
                 average_cost=row["成交价格"],
                 filled=mul * row["成交数量"]
             )
@@ -171,10 +171,10 @@ class TdxClient(object):
             sign = -1 if row["买卖标志"] == 1 else 1
             if today_trans:
                 commission = row["成交金额"] * 0.0012
-                dt = str(today.date()) + " " + row["成交时间"]
+                dt = unicode(today.date()) + " " + row["成交时间"]
             else:
                 commission = row["佣金"] + row["过户费"] + row["印花税"] + row["经手费"] + row["证管费"]
-                dt = str(datetime.datetime.strptime(str(row["成交日期"]), "%Y%m%d").date()) + " " + row["成交时间"],
+                dt = unicode(datetime.datetime.strptime(unicode(row["成交日期"]), "%Y%m%d").date()) + " " + unicode(row["成交时间"]),
             rt[id] = Transaction(
                 id=id,
                 asset=unicode(row["证券代码"]),
@@ -322,10 +322,10 @@ class TdxClient(object):
             code = str(code)
         data, err = self.api.SendOrders(self.clientID, [action], [order_type], [shareholder], [code], [price], [number])
         data = self.process_data(data)
-        return {
-            "id":data["委托编号"].values[0],
-            "message":data["返回信息"].values[0],
-        },err
+        return OrderRt(
+            order_id=unicode(data["委托编号"].values[0]),
+            message=unicode(data["返回信息"].values[0]),
+        ),err
 
     ### hth 委托编号
     ### jys 交易所编号
