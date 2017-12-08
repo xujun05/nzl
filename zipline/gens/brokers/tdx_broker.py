@@ -323,7 +323,7 @@ class TdxBroker(Broker):
 
     def get_realtime_bars(self, assets, frequency):
         if frequency == '1m':
-            resample_freq = ' Min'
+            resample_freq = 'Min'
         elif frequency == '1d':
             resample_freq = '24 H'
         else:
