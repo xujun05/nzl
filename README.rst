@@ -13,14 +13,17 @@ zipline-live
 |Coverage Status|
 |Apache License|
 
-基于tdx的zipline.
+使用文档已经迁移到gitbook上，请戳 `这里 <https://www.gitbook.com/book/jaysonalbert/zipline/details>`_
 
+``cn-zipline-live`` 是一个支持实盘的股票回测框架，是基于 ``zipline-live`` 的二次开发，以支持国内市场。 `zipline-live <https://github.com/zipline-live/zipline/>`_ 是基于 ``zipline`` 二次开发的回测框架，使用盈透证券（ib）的实盘接口。
 
 `zipline <http://zipline.io/>`_ 是美国 `Quantopian <https://quantopian.com/>`_ 公司开源的量化交易回测引擎，它使用 ``Python`` 语言开发，
 部分代码使用 ``cython`` 融合了部分c语言代码。 ``Quantopian`` 在它的网站上的回测系统就是基于 ``zipline`` 的，
 经过生产环境的长期使用，已经比完善，并且在持续的改进中。
 
 ``zipline`` 的基本使用方法在 https://www.quantopian.com/tutorials/getting-started/ ,对于zipline的深度解析，可以看大神 `rainx <https://github.com/rainx>`_ 写的 `文档 <https://www.gitbook.com/book/rainx/-zipline/details>`_ ，本项目中的大部分依赖项目也都是rainx开发的项目
+
+cn-zipline-live主要分为三个模块，回测，实盘以及研究，其中研究模块正处于初步开发中，功能尙待完善。
 
 
 数据源
