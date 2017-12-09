@@ -9,9 +9,12 @@ import zerorpc
 import click
 import logging
 from six import PY2
+from weakref import WeakKeyDictionary
+from functools import wraps
+import sys
 
 if not PY2:
-    unicode = str
+    unicode = str  # 兼容python3 rpc 请求 python2的string
 
 if __name__ == '__main__':
     from type import *
@@ -44,13 +47,44 @@ def getJsonPath(name, moduleFile):
     return moduleJsonPath
 
 
+class remember_a_while(object):
+    def __init__(self, get):
+        self._get = get
+        self._cache = WeakKeyDictionary()
+        self._access_time = None
+        self.interval = pd.Timedelta('1 S')
+
+    def __get__(self, instance, owner):
+        @wraps(self._get)
+        def fun():
+            if instance is None:
+                return self
+            now = pd.to_datetime('now')
+            if self._access_time and now < self._access_time + self.interval:
+                return self._cache[instance]
+            self._cache[instance] = val = self._get(instance)
+            self._access_time = now
+            return val
+
+        return fun
+
+    def __set__(self, instance, value):
+        raise AttributeError("Can't set read-only attribute.")
+
+    def __delitem__(self, instance):
+        del self._cache[instance]
+
+
 class TdxClient(object):
     setting = None
     api = None
     clientID = None
 
     orderID = pd.DataFrame()
-    orderStrategyDict = {}
+    _last_request_time = None
+    _request_interval = pd.Timedelta('1 S')
+    _remembered = {}
+    _buffer = {}
 
     def __init__(self, config_path=''):
         assert config_path != ''
@@ -74,7 +108,7 @@ class TdxClient(object):
                                             str(self.setting["communication_password"]))
         if err != '':
             logging.error(err)
-            exit(-1)
+            sys.exit(-1)
         return self
 
     def get_shareholder(self, stock):
@@ -92,9 +126,9 @@ class TdxClient(object):
         df = self.process_data(df)
         rt = {}
         for index, row in df.T.iteritems():
-            if row["报价方式"] != "买卖":
+            if row["报价方式"] not in ["买卖","限价"]:
                 continue
-            order_id = row["委托编号"]
+            order_id = unicode(row["委托编号"])
             mul = -1 if row["买卖标志"] == 1 else 1
             rt[order_id] = Order(
                 dt=unicode(pd.to_datetime("today").date()) + " " + unicode(row["委托时间"]),
@@ -104,7 +138,7 @@ class TdxClient(object):
                 status=unicode(row["状态说明"], 'utf8'),
                 price=row["委托价格"],
                 amount=mul * row["委托数量"],
-                order_id=row["委托编号"],
+                order_id=order_id,
                 average_cost=row["成交价格"],
                 filled=mul * row["成交数量"]
             )
@@ -138,10 +172,10 @@ class TdxClient(object):
             sign = -1 if row["买卖标志"] == 1 else 1
             if today_trans:
                 commission = row["成交金额"] * 0.0012
-                dt = str(today.date()) + " " + row["成交时间"]
+                dt = unicode(today.date()) + " " + row["成交时间"]
             else:
                 commission = row["佣金"] + row["过户费"] + row["印花税"] + row["经手费"] + row["证管费"]
-                dt = str(datetime.datetime.strptime(str(row["成交日期"]), "%Y%m%d").date()) + " " + row["成交时间"],
+                dt = unicode(datetime.datetime.strptime(unicode(row["成交日期"]), "%Y%m%d").date()) + " " + unicode(row["成交时间"]),
             rt[id] = Transaction(
                 id=id,
                 asset=unicode(row["证券代码"]),
@@ -153,9 +187,35 @@ class TdxClient(object):
             )
         return rt
 
+    @remember_a_while
     def transactions(self):
         start_date = end_date = pd.to_datetime('today').strftime('%Y%m%d')
         return self._transactions(start_date, end_date)
+
+    @remember_a_while
+    def positions(self):
+        rt = []
+        data, err = self.query_data(SHARES)
+        for row in data.T.iteritems():
+            rt.append(
+                Position(
+                    sid=row["证券代码"],
+                    available=row["可用数量"],
+                    amount=row["证券数量"],
+                    cost_basis=row["成本价"],
+                    last_sale_price=row["当前价"])
+            )
+        return rt
+
+    @remember_a_while
+    def portfolio(self):
+        data, err = self.query_data(BALANCE)
+        ptf = Portfolio(
+            portfolio_value=data["总资产"].values[0],
+            cash=data["可用资金"].values[0],
+            positions_value=data["最新市值"].values[0]
+        )
+        return ptf
 
     # return 1 if sh, 0 if sz
     def get_stock_type(self, stock):
@@ -259,17 +319,28 @@ class TdxClient(object):
     # order one
     def order(self, code, number, price, action, order_type):
         shareholder = self.get_shareholder(code)
+        if isinstance(code,unicode):
+            code = str(code)
         data, err = self.api.SendOrders(self.clientID, [action], [order_type], [shareholder], [code], [price], [number])
-        return self.process_data(data), err
+        data = self.process_data(data)
+        return OrderRt(
+            order_id=unicode(data["委托编号"].values[0]),
+            message=unicode(data["返回信息"].values[0]),
+        ),err
 
     ### hth 委托编号
     ### jys 交易所编号
     def cancel_orders(self, jys, hth):
+        if isinstance(hth,unicode):
+            hth = str(hth)
+        if not isinstance(jys,str):
+            jys = str(jys)
+        if self.setting['broker'] == "zszq" and jys == '0':
+            jys = '2'
         if not isinstance(hth, list):
             hth = [hth]
             jys = [jys]
-        data, err = self.api.CancelOrders(jys, hth)
-        return self.process_data(data), err
+        self.api.CancelOrders(self.clientID,jys, hth)
 
     def get_quotes(self, code):
         if not isinstance(code, list):
@@ -312,7 +383,7 @@ class TdxClient(object):
     show_default=True,
     help='server uri'
 )
-def server(config, port,uri):
+def server(config, port, uri):
     """
     Start tdx server.
     :return:

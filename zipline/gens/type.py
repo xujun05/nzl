@@ -49,6 +49,11 @@ Order = namedtuple("Order", [
     'filled',
 ])
 
+OrderRt = namedtuple("OrderRt",[
+    "order_id",
+    "message",
+])
+
 Transaction = namedtuple("Transaction", [
     "id",
     'asset',
@@ -57,4 +62,18 @@ Transaction = namedtuple("Transaction", [
     'price',
     'order_id',
     'commission',
+])
+
+Position = namedtuple("Position",[
+    'sid',
+    'available',
+    'amount',
+    'cost_basis',
+    'last_sale_date'
+])
+
+Portfolio = namedtuple("Portfolio",[
+    'portfolio_value',
+    'cash',
+    'positions_value'
 ])

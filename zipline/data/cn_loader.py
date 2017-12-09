@@ -33,7 +33,7 @@ import shutil
 
 logger = logbook.Logger('Loader')
 
-ONE_HOUR = pd.Timedelta(hours=1)
+ONE_HOUR = pd.Timedelta(hours=6)
 
 
 def last_modified_time(path):

@@ -15,6 +15,9 @@ from zipline.finance.order import (
 )
 from zipline.gens.type import Transaction as TdxTransaction
 from zipline.gens.type import Order as TdxOrder
+from zipline.gens.type import Position as TdxPosition
+from zipline.gens.type import Portfolio as TdxPortfolio
+from zipline.gens.type import OrderRt
 from zipline.finance.transaction import Transaction as ZPTransaction
 from zipline.api import symbol
 from zipline.gens.type import *
@@ -82,13 +85,15 @@ class TdxBroker(Broker):
     def positions(self):
         now = datetime.datetime.now()
         z_positions = protocol.Positions()
-        for row in self._client.query_data(SHARES).iteritems():
-            sid = row["证券代码"].values[0]
-            available = row["可用数量"].values[0]
+        for pos in self._client.positions():
+            if isinstance(pos, list):
+                pos = TdxPosition(*pos)
+            sid = pos.sid
+            available = pos.available
             z_position = protocol.Position(symbol(sid))
-            z_position.amount = row["证券数量"].values[0]
-            z_position.cost_basis = row["成本价"].values[0]
-            z_position.last_sale_price = row["当前价"].values[0]
+            z_position.amount = pos.amount
+            z_position.cost_basis = pos.cost_basis
+            z_position.last_sale_price = pos.last_sale_price
             z_position.last_sale_date = now
             z_positions[symbol(sid)] = z_position
 
@@ -97,16 +102,18 @@ class TdxBroker(Broker):
     @property
     def portfolio(self):
         z_portfolio = protocol.Portfolio()
-        data = self._client.query_data(BALANCE)
+        pfo = self._client.portfolio()
+        if isinstance(pfo, list):
+            pfo = TdxPortfolio(*pfo)
         z_portfolio.capital_used = None  # TODO
         z_portfolio.starting_cash = None
-        z_portfolio.portfolio_value = data[" 总资产"].values[0]
+        z_portfolio.portfolio_value = pfo.portfolio_value
         z_portfolio.pnl = None
         z_portfolio.returns = None
-        z_portfolio.cash = data["可用资金"].values[0]
+        z_portfolio.cash = pfo.cash
         z_portfolio.start_date = None
         z_portfolio.positions = self.positions
-        z_portfolio.positions_value = data["最新市值"].values[0]
+        z_portfolio.positions_value = pfo.positions_value
         z_portfolio.position_exposure = z_portfolio.positions_value / (z_portfolio.positions_value + z_portfolio.cash)
 
         return z_portfolio
@@ -128,8 +135,7 @@ class TdxBroker(Broker):
     def time_skew(self):
         return pd.Timedelta('1 S')
 
-    def order(self, asset, amount, limit_price, stop_price, style):
-        raise NotImplemented("can not test order yet")
+    def order(self, asset, amount, style):
         code = asset.symbol
 
         if amount > 0:
@@ -137,19 +143,22 @@ class TdxBroker(Broker):
         else:
             action = SELL
 
+        is_busy = (amount > 0)
         if isinstance(style, MarketOrder):
             order_type = FIVE_LEVEL_MARKET_ORDER
+            price = 0.0
         elif isinstance(style, LimitOrder):
             order_type = LIMIT_CHARGE
+            price = style.get_limit_price(is_busy)
         elif isinstance(style, StopOrder):
             raise Exception("stop order is not supported")
         elif isinstance(style, StopLimitOrder):
             raise Exception("stop limit order is not supported")
 
-        price = limit_price or 0.0
-
         data, err = self._client.order(code, abs(amount), price, action, order_type)
-        order_id = data["委托编号"].values[0]
+        if isinstance(data,list):
+            data = OrderRt(*data)
+        order_id = str(data.order_id)
         zp_order = self._get_or_create_zp_order(order_id)
 
         log.info("Placing order-{order_id}: "
@@ -227,7 +236,7 @@ class TdxBroker(Broker):
             limit=order.price,  # TODO 市价单和限价单
             id=zp_order_id,
         )
-        od.broker_order_id=order.order_id
+        od.broker_order_id = order.order_id
         od.status = zp_status
 
         return od
@@ -240,7 +249,7 @@ class TdxBroker(Broker):
             zp_order_id = self._tdx_to_zp_order_id(tdx_order_id)
             self._orders[zp_order_id] = self.tdx_order_to_zipline_order(tdx_order)
 
-    def _tdx_transaction_to_zipline(self,transaction):
+    def _tdx_transaction_to_zipline(self, transaction):
         return ZPTransaction(
             asset=symbol(transaction.asset),
             amount=transaction.amount,
@@ -314,7 +323,7 @@ class TdxBroker(Broker):
 
     def get_realtime_bars(self, assets, frequency):
         if frequency == '1m':
-            resample_freq = ' Min'
+            resample_freq = 'Min'
         elif frequency == '1d':
             resample_freq = '24 H'
         else:
