@@ -23,6 +23,20 @@ import pandas as pd
 from contextlib2 import ExitStack
 from pandas.tseries.tools import normalize_date
 import numpy as np
+from zipline.data.schema import (
+    full,
+    fundamental,
+)
+from sqlalchemy import (
+    create_engine,
+)
+from sqlalchemy.sql import (
+    func
+)
+from sqlalchemy.orm import (
+    sessionmaker,
+    Query,
+)
 
 from itertools import chain, repeat
 from numbers import Integral
@@ -214,6 +228,8 @@ class TradingAlgorithm(object):
         in the simulation with ``get_environment``. This allows algorithms
         to conditionally execute code based on platform it is running on.
         default: 'zipline'
+    fundamental_reader : FundamentalReader, optional
+        fundamental reader
     """
 
     def __init__(self, *args, **kwargs):
@@ -255,6 +271,9 @@ class TradingAlgorithm(object):
             identifiers : List
                 Any asset identifiers that are not provided in the
                 equities_metadata, but will be traded by this TradingAlgorithm
+            fundamental_reader : FundamentalReader, optional
+                fundamental reader
+
         """
         self.sources = []
 
@@ -355,6 +374,8 @@ class TradingAlgorithm(object):
         )
 
         self._handle_data = None
+
+        self.fundamental_reader = kwargs.pop("fundamental_reader",None)
 
         def noop(*args, **kwargs):
             pass
@@ -1792,6 +1813,15 @@ class TradingAlgorithm(object):
         except ValueError:
             raise UnsupportedDatetimeFormat(input=dt,
                                             method='set_symbol_lookup_date')
+
+    @api_method
+    def query(self,*args,**kwargs):
+        if self.fundamental_reader:
+            return self.fundamental_reader.query(self.datetime,*args,**kwargs)
+
+    @api_method
+    def get_fundamental(self,query):
+        return self.fundamental_reader.get_fundamental(query)
 
     # Remain backwards compatibility
     @property
