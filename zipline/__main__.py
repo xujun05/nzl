@@ -400,6 +400,13 @@ def zipline_magic(line, cell=None):
     help='whether to overwrite default start session for minute data(3 years) with start.',
 )
 @click.option(
+    '-f',
+    '--fundamental',
+    default=False,
+    type=bool,
+    help='whether to ingest fundamental data.',
+)
+@click.option(
     '--assets-version',
     type=int,
     multiple=True,
@@ -410,15 +417,15 @@ def zipline_magic(line, cell=None):
     default=True,
     help='Print progress information to the terminal.'
 )
-def ingest(bundle, assets, minute, start,overwrite, assets_version, show_progress):
+def ingest(bundle, assets, minute, start,overwrite, fundamental, assets_version, show_progress):
     if bundle == 'tdx':
         if assets:
             if not os.path.exists(assets):
                 raise FileNotFoundError
             df = pd.read_csv(assets, names=['symbol', 'name'], dtype=str, encoding='utf8')
-            register_tdx(df,minute,start,overwrite)
+            register_tdx(df,minute,start,overwrite,fundamental)
         else:
-            register_tdx(None,minute,start,overwrite)
+            register_tdx(None,minute,start,overwrite,fundamental)
 
     bundles_module.ingest(bundle,
                           os.environ,

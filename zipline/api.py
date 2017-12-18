@@ -37,6 +37,7 @@ from .utils.events import (
     date_rules,
     time_rules
 )
+from zipline.data.schema import fundamental
 
 __all__ = [
     'EODCancel',
@@ -56,4 +57,5 @@ __all__ = [
     'slippage',
     'time_rules',
     'calendars',
+    'fundamental'
 ]

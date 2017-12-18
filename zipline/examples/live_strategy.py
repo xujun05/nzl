@@ -1,15 +1,36 @@
 # coding=utf-8
 
-from zipline.api import order, record, symbol
+from zipline.api import order, record, symbol, schedule_function
+from zipline.api import date_rules, get_datetime, cancel_order, time_rules
 import platform
 
+
+def rebalance(context, data):
+    # order(context.smb, 100, limit_price=4.18)
+    print("ordering")
+
+
+def cancle_open_orders(context, data):
+    for key, val in context.get_open_orders().items():
+        for order in val:
+            print(
+                "cancel order {} for {}, amount {}, filled {}".format(order.id, order.sid, order.amount, order.filled))
+            cancel_order(order.id)
+
+
 def initialize(context):
-    context.smb = symbol('601118')
+    context.smb = symbol('000521')
+    context.ordered = False
+    # schedule_function(rebalance, date_rule=date_rules.every_day(), time_rule=time_rules.market_open(minutes=140))
 
 
 def handle_data(context, data):
-    can_trade = data.can_trade(context.smb)
-    hist = data.history(symbol('601118'), bar_count=20, frequency='1m', fields='open')
+    hist = data.history(context.smb, bar_count=5, frequency='1m', fields='open')
+    if not context.ordered:
+        print("ordering")
+        order(context.smb, 100, limit_price=5.00)
+        context.ordered = True
+    cancle_open_orders(context,data)
     print(hist)
 
 

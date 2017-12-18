@@ -9,6 +9,9 @@ from zipline.utils.util import fillna
 from . import core as bundles
 from zipline.utils.calendars import get_calendar
 
+from ..fundamental import FundamentalWriter
+from os.path import join
+
 from functools import partial
 from numpy import searchsorted
 
@@ -144,11 +147,13 @@ def reindex_to_calendar(calendar, data, freq='1d'):
 def tdx_bundle(assets,
                ingest_minute,  # whether to ingest minute data, default False
                overwrite,
+               fundamental,     # whether to ingest fundamental data, default False
                environ,
                asset_db_writer,
                minute_bar_writer,
                daily_bar_writer,
                adjustment_writer,
+               fundamental_writer,
                calendar,
                start_session,
                end_session,
@@ -213,10 +218,14 @@ def tdx_bundle(assets,
         dividends=dividends
     )
 
+    if fundamental:
+        logger.info("writing fundamental data:")
+        fundamental_writer.write(start_session,end_session )
+
     eg.exit()
 
 
-def register_tdx(assets=None, minute=False, start=None, overwrite=False, end=None):
+def register_tdx(assets=None, minute=False, start=None, overwrite=False, fundamental=False, end=None):
     try:
         bundles.unregister('tdx')
     except bundles.UnknownBundle:
@@ -225,10 +234,10 @@ def register_tdx(assets=None, minute=False, start=None, overwrite=False, end=Non
     if start:
         if not calendar.is_session(start):
             start = calendar.all_sessions[searchsorted(calendar.all_sessions, start)]
-    bundles.register('tdx', partial(tdx_bundle, assets, minute, overwrite), 'SHSZ', start, end, minutes_per_day=240)
+    bundles.register('tdx', partial(tdx_bundle, assets, minute, overwrite, fundamental), 'SHSZ', start, end, minutes_per_day=240)
 
 
-bundles.register('tdx', partial(tdx_bundle, None, False, False), minutes_per_day=240)
+bundles.register('tdx', partial(tdx_bundle, None, False, False, False), minutes_per_day=240)
 
 if __name__ == '__main__':
     eg = Engine(auto_retry=True, multithread=True, thread_num=8)
