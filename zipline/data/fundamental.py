@@ -119,7 +119,6 @@ class FundamentalWriter(object):
         year = max(2010, int(start.strftime('%Y')))
 
         pp = [(i, j) for i in range(year, 2017) for j in range(1, 5)]
-        pp = pp[0:1]
 
         for i in pp:
             self.quarter_report(*i)
