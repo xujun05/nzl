@@ -432,7 +432,7 @@ def _make_bundle_core():
                 asset_db_writer = AssetDBWriter(assets_db_path)
 
                 fundamental_db_writer = FundamentalWriter(
-                    wd.getpath(*fundamental_db_path(
+                    wd.getpath(*fundamental_db_releative(
                         name, timestr, environ=environ
                     ))
                 )
