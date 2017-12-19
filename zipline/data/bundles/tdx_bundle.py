@@ -220,7 +220,10 @@ def tdx_bundle(assets,
 
     if fundamental:
         logger.info("writing fundamental data:")
-        fundamental_writer.write(start_session,end_session )
+        try:
+            fundamental_writer.write(start_session,end_session )
+        except Exception as e:
+            pass
 
     eg.exit()
 
