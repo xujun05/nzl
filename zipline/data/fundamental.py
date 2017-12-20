@@ -110,7 +110,7 @@ class FundamentalReader(object):
 class FundamentalWriter(object):
     table_names = ['fundamental', 'full']
 
-    @preprocess(engine=coerce_string_to_eng)
+    @preprocess(engine=coerce_string_to_eng(require_exists=False))
     def __init__(self, engine):
         self.engine = engine
 
