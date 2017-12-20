@@ -1,4 +1,5 @@
 # encoding: UTF-8
+import click
 import json
 
 from io import StringIO
@@ -6,12 +7,10 @@ import pandas as pd
 import os
 import datetime
 import zerorpc
-import click
 import logging
 from six import PY2
 from weakref import WeakKeyDictionary
 from functools import wraps
-import sys
 
 if not PY2:
     unicode = str  # 兼容python3 rpc 请求 python2的string
@@ -121,26 +120,85 @@ class TdxClient(object):
     def account_id(self):
         return self.setting["account_id"]
 
+    order_column_map = None
+
+    def _parse_order_column(self, df):
+        """
+                :param df:
+                :type df: pandas.DataFrame
+                :return:
+                """
+        if self.order_column_map:
+            return self.order_column_map
+
+        columns = df.columns.tolist()
+        map = dict()
+        for i, name in enumerate(columns):
+            if name == "委托编号" or name == "委托序号":
+                map["order_id"] = i
+            elif name == "状态说明" or name == "委托状态":
+                map["status"] = i
+            elif name == "证券代码":
+                map["symbol"] = i
+            elif name == "证券名称":
+                map["name"] = i
+            elif name == "委托时间":
+                map["dt"] = i
+            elif name == "委托价格":
+                map["price"] = i
+            elif name == "委托数量":
+                map["amount"] = i
+            elif name == "成交价格":
+                map["average_cost"] = i
+            elif name == "成交数量":
+                map["tx_volume"] = i
+            elif name == "成交金额":
+                map["tx_amount"] = i
+            elif name == "买卖方向":
+                map["tx_side"] = i
+
+        return map
+
     def orders(self):
         df, err = self.api.QueryDatas(self.clientID, [TODAY_ENTRUSTMENT])
         df = self.process_data(df)
+
         rt = {}
+        if df is None or len(df) <= 0:
+            return rt
+        if not self.order_column_map:
+            self.order_column_map = self._parse_order_column(df)
         for index, row in df.T.iteritems():
-            if row["报价方式"] not in ["买卖","限价"]:
+            if "报价方式" in row and row["报价方式"] not in ["买卖","限价"]:
                 continue
-            order_id = unicode(row["委托编号"])
-            mul = -1 if row["买卖标志"] == 1 else 1
+            order_id = unicode(row[self.order_column_map["order_id"]])
+            mul = -1
+            if "买卖标志" in row:
+                if row["买卖标志"] == 1:
+                    mul = 1
+            elif "tx_side" in self.order_column_map:
+                mul_str = row[self.order_column_map["tx_side"]]
+                if "买" in mul_str:
+                    mul = 1
+            tx_volume = row[self.order_column_map["tx_volume"]]
+            average_cost = 0
+            if "average_cost" in self.order_column_map:
+                average_cost = row[self.order_column_map["average_cost"]]
+            elif "tx_amount" in self.order_column_map:
+                if tx_volume > 0:
+                    average_cost = row[self.order_column_map["tx_amount"]] / tx_volume
+
             rt[order_id] = Order(
-                dt=unicode(pd.to_datetime("today").date()) + " " + unicode(row["委托时间"]),
+                dt=unicode(pd.to_datetime("today").date()) + " " + unicode(row[self.order_column_map["dt"]]),
                 # TODO timezone, zerorpc can't serialize datetime
-                symbol=unicode(row["证券代码"]),
-                name=unicode(row["证券名称"], 'utf8'),
-                status=unicode(row["状态说明"], 'utf8'),
-                price=row["委托价格"],
-                amount=mul * row["委托数量"],
+                symbol=unicode(row[self.order_column_map["symbol"]]),
+                name=unicode(row[self.order_column_map["name"]], 'utf8'),
+                status=unicode(row[self.order_column_map["status"]], 'utf8'),
+                price=row[self.order_column_map["price"]],
+                amount=mul * row[self.order_column_map["amount"]],
                 order_id=order_id,
-                average_cost=row["成交价格"],
-                filled=mul * row["成交数量"]
+                average_cost=average_cost,
+                filled=mul * tx_volume
             )
 
         return rt
@@ -192,18 +250,49 @@ class TdxClient(object):
         start_date = end_date = pd.to_datetime('today').strftime('%Y%m%d')
         return self._transactions(start_date, end_date)
 
+    position_column_map = None
+
+    def _parse_position_column(self, df):
+        """
+        :param df:
+        :type df: pandas.DataFrame
+        :return:
+        """
+        if self.position_column_map:
+            return self.position_column_map
+        columns = df.columns.tolist()
+        map = dict()
+        for i, name in enumerate(columns):
+            if name == "证券代码":
+                map["sid"] = i
+            elif name == "可用数量" or name == "可卖数量":
+                map["available"] = i
+            elif name == "证券数量":
+                map["amount"] = i
+            elif name == "成本价":
+                map["cost_basis"] = i
+            elif name == "当前价":
+                map["last_sale_price"] = i
+        return map
+
     @remember_a_while
     def positions(self):
         rt = []
         data, err = self.query_data(SHARES)
-        for row in data.T.iteritems():
+        if data is None or len(data) <= 0:
+            return rt
+        if not self.position_column_map:
+            self.position_column_map = self._parse_position_column(data)
+        for r in data.iterrows():
+            row = r[1]
             rt.append(
                 Position(
-                    sid=row["证券代码"],
-                    available=row["可用数量"],
-                    amount=row["证券数量"],
-                    cost_basis=row["成本价"],
-                    last_sale_price=row["当前价"])
+                    sid=unicode(row[self.position_column_map["sid"]]),
+                    available=row[self.position_column_map["available"]],
+                    amount=row[self.position_column_map["amount"]],
+                    cost_basis=row[self.position_column_map["cost_basis"]],
+                    last_sale_price = row[self.position_column_map["last_sale_price"]],
+                    last_sale_date=None)
             )
         return rt
 
@@ -402,4 +491,5 @@ create a tdx_client.exe with the following command:
 '''
 
 if __name__ == '__main__':
-    server()
+    import sys
+    server(sys.argv[1:])
