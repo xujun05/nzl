@@ -73,6 +73,16 @@ from zipline.utils.cli import maybe_show_progress
 from ._equities import _compute_row_slices, _read_bcolz_data
 from ._adjustments import load_adjustments_from_sqlite
 
+from sqlalchemy.sql import (
+    func
+)
+from sqlalchemy.orm import (
+    sessionmaker,
+    Query,
+)
+import pandas as pd
+from zipline.data.schema import Shares
+
 
 logger = logbook.Logger('UsEquityPricing')
 
@@ -85,7 +95,13 @@ SQLITE_ADJUSTMENT_COLUMN_DTYPES = {
     'ratio': float,
     'sid': integer,
 }
-SQLITE_ADJUSTMENT_TABLENAMES = frozenset(['splits', 'dividends', 'mergers'])
+SQLITE_SHARES_COLUMN_DTYPES = {
+    'sid': integer,
+    'effective_date': integer,
+    'shares': float,
+    'circulation': float,
+}
+SQLITE_ADJUSTMENT_TABLENAMES = frozenset(['splits', 'dividends', 'mergers', 'shares'])
 
 SQLITE_DIVIDEND_PAYOUT_COLUMN_DTYPES = {
     'sid': integer,
@@ -915,15 +931,18 @@ class SQLiteAdjustmentWriter(object):
                 np.array([], dtype=list(expected_dtypes.items())),
             )
         else:
-            if frozenset(frame.columns) != frozenset(expected_dtypes):
-                raise ValueError(
-                    "Unexpected frame columns:\n"
-                    "Expected Columns: %s\n"
-                    "Received Columns: %s" % (
-                        set(expected_dtypes),
-                        frame.columns.tolist(),
+            if tablename == 'shares':
+                pass
+            else:
+                if frozenset(frame.columns) != frozenset(expected_dtypes):
+                    raise ValueError(
+                        "Unexpected frame columns:\n"
+                        "Expected Columns: %s\n"
+                        "Received Columns: %s" % (
+                            set(expected_dtypes),
+                            frame.columns.tolist(),
+                        )
                     )
-                )
 
             actual_dtypes = frame.dtypes
             for colname, expected in iteritems(expected_dtypes):
@@ -958,6 +977,12 @@ class SQLiteAdjustmentWriter(object):
             frame['effective_date'] = frame['effective_date'].values.astype(
                 'datetime64[s]',
             ).astype('int64')
+        if tablename == 'shares':
+            return self._write(
+                tablename,
+                SQLITE_SHARES_COLUMN_DTYPES,
+                frame,
+            )
         return self._write(
             tablename,
             SQLITE_ADJUSTMENT_COLUMN_DTYPES,
@@ -1126,7 +1151,8 @@ class SQLiteAdjustmentWriter(object):
               splits=None,
               mergers=None,
               dividends=None,
-              stock_dividends=None):
+              stock_dividends=None,
+              shares=None):
         """
         Writes data to a SQLite file to be read by SQLiteAdjustmentReader.
 
@@ -1201,6 +1227,7 @@ class SQLiteAdjustmentWriter(object):
         """
         self.write_frame('splits', splits)
         self.write_frame('mergers', mergers)
+        self.write_frame('shares', shares)
         self.write_dividend_data(dividends, stock_dividends)
         self.conn.execute(
             "CREATE INDEX splits_sids "
@@ -1217,6 +1244,14 @@ class SQLiteAdjustmentWriter(object):
         self.conn.execute(
             "CREATE INDEX mergers_effective_date "
             "ON mergers(effective_date)"
+        )
+        self.conn.execute(
+            "CREATE INDEX shares_sids "
+            "ON shares(sid)"
+        )
+        self.conn.execute(
+            "CREATE INDEX shares_effective_date "
+            "ON shares(effective_date)"
         )
         self.conn.execute(
             "CREATE INDEX dividends_sid "
@@ -1283,6 +1318,7 @@ class SQLiteAdjustmentReader(object):
     @preprocess(conn=coerce_string_to_conn(require_exists=True))
     def __init__(self, conn):
         self.conn = conn
+        self.session = sessionmaker(bind=self.conn)()
 
         # Given the tables in the adjustments.db file, dict which knows which
         # col names contain dates that have been coerced into ints.
@@ -1315,6 +1351,28 @@ class SQLiteAdjustmentReader(object):
         return [[Timestamp(adjustment[0], unit='s', tz='UTC'), adjustment[1]]
                 for adjustment in
                 adjustments_for_sid]
+
+    def get_shares(self,assets,date):
+        seconds = date.value / int(1e9)
+        return pd.DataFrame(self.session.qurey(
+            Shares.shares,
+            Shares.circulation,
+            func.max(Shares.effective_date).label('effective_date')
+        ).filter(
+            Shares.c.sid.in_(assets.sid.tolist())
+        ).filter(
+            Shares.effective_date <  seconds
+        ).all())
+
+    def get_shares_for_sid(self, sid):
+        t = (sid,)
+        c = self.conn.cursor()
+        shares_for_sid = c.execute(
+            "SELECT effective_date, shares, circulation FROM shares WHERE sid = ?", t
+        ).fetchall()
+        c.close()
+
+        return [[Timestamp(share[0], unit='s', tz='UTC'), share[1], share[2]] for share in shares_for_sid]
 
     def get_dividends_with_ex_date(self, assets, date, asset_finder):
         seconds = date.value / int(1e9)

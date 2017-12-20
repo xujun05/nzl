@@ -9,6 +9,12 @@ from zipline.utils.util import fillna
 from . import core as bundles
 from zipline.utils.calendars import get_calendar
 
+from zipline.data.us_equity_pricing import (
+    SQLITE_ADJUSTMENT_COLUMN_DTYPES,
+    SQLITE_SHARES_COLUMN_DTYPES,
+    SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMN_DTYPES,
+)
+
 from ..fundamental import FundamentalWriter
 from os.path import join
 
@@ -69,45 +75,78 @@ def fetch_single_equity(engine, symbol, start=None, end=None, freq='1d'):
 def fetch_single_split_and_dividend(engine, symbol):
     df = engine.xdxr(symbol)
     if df.empty:
-        return pd.DataFrame(),pd.DataFrame()
-    df = df[(df.category == 1) & (df.peigu == 0)]
-    if df.empty:
-        return pd.DataFrame(),pd.DataFrame()
-    splits = pd.DataFrame({
-        'sid': int(symbol),
-        'effective_date': df.index,
-        'ratio': 10 / (10 + df.songzhuangu)
-    })
+        return pd.DataFrame(),pd.DataFrame(),pd.DataFrame()
+    df_sd = df[(df.category == 1) & (df.peigu == 0)]
+    if df_sd.empty:
+        splits = pd.DataFrame()
+        dividends = pd.DataFrame()
+    else:
+        splits = pd.DataFrame({
+            'sid': int(symbol),
+            'effective_date': df_sd.index,
+            'ratio': 10 / (10 + df_sd.songzhuangu)
+        })
 
-    dividends = pd.DataFrame({
-        'sid': int(symbol),
-        'ex_date': df.index,
-        'amount': df.fenhong / 10,
-        'record_date': pd.NaT,
-        'declared_date': pd.NaT,
-        'pay_date': pd.NaT
-    })
+        dividends = pd.DataFrame({
+            'sid': int(symbol),
+            'ex_date': df_sd.index,
+            'amount': df_sd.fenhong / 10,
+            'record_date': pd.NaT,
+            'declared_date': pd.NaT,
+            'pay_date': pd.NaT
+        })
 
-    return splits, dividends
+    dfs = df[df.category != 1]
+
+    if dfs.empty:
+        shares = pd.DataFrame()
+    else:
+        shares = pd.DataFrame({
+            'sid': int(symbol),
+            'effective_date': dfs.index,
+            'shares': dfs.houzongguben,
+            'circulation': dfs.panhouliutong,
+        })
+
+    return splits, dividends, shares
 
 
 def fetch_splits_and_dividends(engine, symbols, start=None, end=None):
     all_splits = []
     all_dividends = []
+    all_shares = []
     for symbol in symbols['symbol']:
-        split, dividend = fetch_single_split_and_dividend(engine, symbol)
+        split, dividend, share = fetch_single_split_and_dividend(engine, symbol)
         all_splits.append(split)
         all_dividends.append(dividend)
+        all_shares.append(share)
 
-    splits = pd.concat(all_splits)
-    dividends = pd.concat(all_dividends)
+    if len(all_splits) != 0:
+        splits = pd.concat(all_splits)
+        dividends = pd.concat(all_dividends)
+        shares = pd.concat(all_shares)
+    else:
+        splits = pd.DataFrame(
+            np.array([], dtype=list(SQLITE_ADJUSTMENT_COLUMN_DTYPES.items())),
+        )
+        dividends = pd.DataFrame(
+            np.array([], dtype=list(SQLITE_STOCK_DIVIDEND_PAYOUT_COLUMN_DTYPES.items())),
+        )
+        shares = pd.DataFrame(
+            np.array([], dtype=list(SQLITE_SHARES_COLUMN_DTYPES.items())),
+        )
+        return splits, dividends, shares
+
     if start:
         dividends = dividends[dividends.ex_date >= start]
         splits = splits[splits.effective_date >= start]
+        shares = shares[shares.effective_date >= start]
+
     if end:
         dividends = dividends[dividends.ex_date < end]
         splits = splits[splits.effective_date < end]
-    return splits[splits.ratio != 1], dividends[dividends.amount != 0]
+        shares = shares[shares.effective_date < end]
+    return splits[splits.ratio != 1], dividends[dividends.amount != 0],shares
 
 
 def get_meta_from_bars(df):
@@ -147,7 +186,7 @@ def reindex_to_calendar(calendar, data, freq='1d'):
 def tdx_bundle(assets,
                ingest_minute,  # whether to ingest minute data, default False
                overwrite,
-               fundamental,     # whether to ingest fundamental data, default False
+               fundamental,  # whether to ingest fundamental data, default False
                environ,
                asset_db_writer,
                minute_bar_writer,
@@ -210,17 +249,21 @@ def tdx_bundle(assets,
             minute_bar_writer.write(bar, show_progress=False)
 
     symbols = pd.concat([symbols, pd.DataFrame(data=metas)], axis=1)
-    splits, dividends = fetch_splits_and_dividends(eg, symbols, start_session, end_session)
+    splits, dividends, shares = fetch_splits_and_dividends(eg, symbols, start_session, end_session)
     symbols.set_index('symbol', drop=False, inplace=True)
     asset_db_writer.write(symbols)
     adjustment_writer.write(
         splits=splits,
-        dividends=dividends
+        dividends=dividends,
+        shares=shares
     )
 
     if fundamental:
         logger.info("writing fundamental data:")
-        fundamental_writer.write(start_session,end_session )
+        try:
+            fundamental_writer.write(start_session, end_session)
+        except Exception as e:
+            pass
 
     eg.exit()
 
@@ -234,7 +277,8 @@ def register_tdx(assets=None, minute=False, start=None, overwrite=False, fundame
     if start:
         if not calendar.is_session(start):
             start = calendar.all_sessions[searchsorted(calendar.all_sessions, start)]
-    bundles.register('tdx', partial(tdx_bundle, assets, minute, overwrite, fundamental), 'SHSZ', start, end, minutes_per_day=240)
+    bundles.register('tdx', partial(tdx_bundle, assets, minute, overwrite, fundamental), 'SHSZ', start, end,
+                     minutes_per_day=240)
 
 
 bundles.register('tdx', partial(tdx_bundle, None, False, False, False), minutes_per_day=240)
