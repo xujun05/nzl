@@ -69,7 +69,8 @@ Position = namedtuple("Position",[
     'available',
     'amount',
     'cost_basis',
-    'last_sale_date'
+    'last_sale_date',
+    'last_sale_price'
 ])
 
 Portfolio = namedtuple("Portfolio",[
