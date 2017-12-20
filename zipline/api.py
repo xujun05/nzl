@@ -29,6 +29,7 @@ from .finance.cancel_policy import (
 )
 from .finance.slippage import (
     FixedSlippage,
+    FixedBasisPointsSlippage,
     VolumeShareSlippage,
 )
 from .utils import math_utils, events
@@ -42,6 +43,7 @@ from zipline.data.schema import fundamental
 __all__ = [
     'EODCancel',
     'FixedSlippage',
+    'FixedBasisPointsSlippage',
     'NeverCancel',
     'VolumeShareSlippage',
     'Restriction',
