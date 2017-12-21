@@ -50,6 +50,13 @@ class full(Base):
     cashflowratio = Column(Float)
 
 
+class Shares(Base):
+    __tablename__ = 'shares'
+    sid = Column(Integer, primary_key=True)
+    effective_date = Column(Integer, primary_key=True)
+    shares = Column(Float)
+    circulation = Column(Float)
+
 class fundamental(Base):
     __tablename__ = 'fundamental'
 

@@ -37,7 +37,8 @@ def retry(times=3):
                 except Exception as e:
                     count = count + 1
 
-            raise Exception("connection failed after retried 3 times, please check your network")
+            logger.error("connection failed after retried 3 times. {} {}".format(args,kwargs))
+            raise Exception("connection failed after retried 3 times. {} {}".format(args,kwargs))
 
         return fun
 
@@ -116,9 +117,10 @@ class FundamentalWriter(object):
     def write(self, start, end):
         self.init_db(self.engine)
 
-        year = max(2010, int(start.strftime('%Y')))
+        start = max(2010, int(start.strftime('%Y')))
+        end = int(min(pd.to_datetime('today',utc=True),end).strftime('%Y')) + 1
 
-        pp = [(i, j) for i in range(year, 2017) for j in range(1, 5)]
+        pp = [(i, j) for i in range(start, end) for j in range(1, 5)]
 
         for i in pp:
             self.quarter_report(*i)

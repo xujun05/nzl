@@ -1812,6 +1812,13 @@ class TradingAlgorithm(object):
     def get_fundamental(self,query):
         return self.fundamental_reader.get_fundamental(query)
 
+    @api_method
+    def get_shares(self, assets, bar_count=1, end_dt=None, fields=None):
+        return self.data_portal.get_shares(assets,
+                                           self.datetime if not end_dt else end_dt,
+                                           bar_count,
+                                           fields)
+
     # Remain backwards compatibility
     @property
     def data_frequency(self):
