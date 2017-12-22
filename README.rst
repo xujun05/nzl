@@ -8,9 +8,9 @@ zipline-live
 ============
 
 |pypi badge|
+|version status|
 |travis status|
 |appveyor status|
-|Coverage Status|
 |Apache License|
 
 使用文档已经迁移到gitbook上，请戳 `这里 <https://www.gitbook.com/book/jaysonalbert/zipline/details>`_
@@ -101,6 +101,8 @@ cn-zipline-live与zipline大同小异，具体使用方法请参考zipline `官�
    :target: https://coveralls.io/github/JaysonAlbert/zipline?branch=master
 .. |Apache License| image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
    :target: https://www.apache.org/licenses/LICENSE-2.0
+.. |version status| image:: https://img.shields.io/pypi/pyversions/cn-zipline-live.svg
+   :target: https://pypi.python.org/pypi/cn-zipline-live
 
 
 .. _`Zipline Install Documentation` : http://www.zipline.io/install.html
