@@ -236,7 +236,7 @@ def ensure_benchmark_data(symbol, first_date, last_date, now, trading_day):
         path=path,
     )
 
-    engine = Engine(auto_retry=True, multithread=True, thread_num=8)
+    engine = Engine(auto_retry=True, multithread=True, thread_num=8, best_ip=True)
     engine.connect()
     data = engine.get_security_bars(symbol, '1d',index=True)
     data = data['close'].sort_index().tz_localize('UTC').pct_change(1).iloc[1:]
