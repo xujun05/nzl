@@ -56,7 +56,7 @@ class TdxBroker(Broker):
         self._mkt_client = Engine(auto_retry=True, best_ip=True)
         self._mkt_client.connect()
 
-        super(self.__class__, self).__init__()
+        super(TdxBroker, self).__init__()
 
     def subscribe_to_market_data(self, asset):
         # TODO fix me subcribe_to_market_data
