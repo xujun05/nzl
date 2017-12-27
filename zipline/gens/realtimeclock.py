@@ -48,13 +48,15 @@ class RealtimeClock(object):
                  execution_closes,
                  before_trading_start_minutes,
                  minute_emission,
-                 time_skew=pd.Timedelta("0s")):
+                 time_skew=pd.Timedelta("0s"),
+                 is_broker_alive=None):
         self.sessions = sessions
         self.execution_opens = execution_opens
         self.execution_closes = execution_closes
         self.before_trading_start_minutes = before_trading_start_minutes
         self.minute_emission = minute_emission
         self.time_skew = time_skew
+        self.is_broker_alive = is_broker_alive or (lambda: True)
         self._last_emit = None
         self.lunch_break_start = days_at_time(sessions,time(11,30),tz='Asia/Shanghai')
         self.lunch_break_end = days_at_time(sessions,time(13),tz='Asia/Shanghai')
@@ -63,7 +65,7 @@ class RealtimeClock(object):
     def __iter__(self):
         yield self.sessions[0], SESSION_START
 
-        while True:
+        while self.is_broker_alive():
             current_time = pd.to_datetime('now', utc=True)
             server_time = (current_time + self.time_skew).floor('1 min')
 
