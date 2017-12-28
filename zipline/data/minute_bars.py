@@ -642,14 +642,16 @@ class BcolzMinuteBarWriter(object):
             # No need to pad.
             return
 
-        if last_date == pd.NaT:
+        if last_date is pd.NaT:
             # If there is no data, determine how many days to add so that
             # desired days are written to the correct slots.
             days_to_zerofill = tds[tds.slice_indexer(end=date)]
         else:
-            days_to_zerofill = tds[tds.slice_indexer(
-                start=last_date + tds.freq,
-                end=date)]
+            logger.error("'data between {},{} is missing, please use start_date: {}'.format(last_date,date,last_date)")
+            raise Exception()
+            # days_to_zerofill = tds[tds.slice_indexer(
+            #     start=last_date + tds.freq,
+            #     end=date)]
 
         self._zerofill(table, len(days_to_zerofill))
 

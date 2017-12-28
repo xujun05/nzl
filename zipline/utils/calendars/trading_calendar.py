@@ -177,7 +177,13 @@ class TradingCalendar(with_metaclass(ABCMeta)):
         int: The total number of minutes for the contiguous chunk of sessions.
              between start_session and end_session, inclusive.
         """
-        return int(self._minutes_per_session[start_session:end_session].sum())
+        start = searchsorted(self.schedule.market_close, start_session)[0]
+        if self.is_open_on_minute(start_session):
+            start = start - 1
+        end = searchsorted(self.schedule.market_close, end_session)[0]
+        if not self.is_open_on_minute(end_session):
+            end = end - 1
+        return int(self._minutes_per_session[start:end].sum())
 
     @property
     def regular_holidays(self):

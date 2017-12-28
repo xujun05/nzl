@@ -372,13 +372,13 @@ def zipline_magic(line, cell=None):
     '-a',
     '--assets',
     default=None,
-    help='a file contains list of assets to ingest. the file have tow columns, separated by comma'
-         'symbol: code of asset,'
-         'name:   name of asset,'
-         'examples:'
-         '  510050,50ETF'
-         '  510500,500ETF'
-         '  510300,300ETF',
+    help='a file contains list of assets to ingest. the file have tow columns,\n'
+         'separated by comma. the first column is codes of assets, and the ,\n'
+         'second column is the names of assets\n\n'
+         'examples:\n'
+         '  510050, 50ETF\n'
+         '  510500, 500ETF\n'
+         '  510300, 300ETF\n',
 )
 @click.option(
     '--minute',
@@ -391,13 +391,6 @@ def zipline_magic(line, cell=None):
     default=None,
     type=Date(tz='utc', as_timestamp=True),
     help='start session',
-)
-@click.option(
-    '-o',
-    '--overwrite',
-    default=False,
-    type=bool,
-    help='whether to overwrite default start session for minute data(3 years) with start.',
 )
 @click.option(
     '-f',
@@ -417,15 +410,15 @@ def zipline_magic(line, cell=None):
     default=True,
     help='Print progress information to the terminal.'
 )
-def ingest(bundle, assets, minute, start,overwrite, fundamental, assets_version, show_progress):
+def ingest(bundle, assets, minute, start, fundamental, assets_version, show_progress):
     if bundle == 'tdx':
         if assets:
             if not os.path.exists(assets):
                 raise FileNotFoundError
             df = pd.read_csv(assets, names=['symbol', 'name'], dtype=str, encoding='utf8')
-            register_tdx(df,minute,start,overwrite,fundamental)
+            register_tdx(df,minute,start,fundamental)
         else:
-            register_tdx(None,minute,start,overwrite,fundamental)
+            register_tdx(None,minute,start,fundamental)
 
     bundles_module.ingest(bundle,
                           os.environ,

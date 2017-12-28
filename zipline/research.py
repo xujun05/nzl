@@ -78,7 +78,7 @@ def log_returns(assets, start, end, periods=1, frequency='daily', price_field='p
 
 def get_pricing(symbols, start_date='2013-01-03', end_date='2014-01-03', symbol_reference_date=calendar.last_session,
                 frequency='daily',
-                fields=None, handle_missing='raise', start_offset=0):
+                fields='close', handle_missing='raise', start_offset=0):
     if not isinstance(symbols, list):
         symbols = [symbols]
 
@@ -90,12 +90,14 @@ def get_pricing(symbols, start_date='2013-01-03', end_date='2014-01-03', symbol_
         end_date = pd.to_datetime(end_date, utc=True)
     idx = calendar.all_sessions.searchsorted(end_date)
     end_date = calendar.all_sessions[idx - 1]
-    bar_count = calendar.session_distance(start_date, end_date)
 
     if frequency in ['1d', 'daily']:
         frequency = '1d'
         data_frequency = 'daily'
+        bar_count = calendar.session_distance(start_date, end_date)
     else:
         frequency = '1m'
         data_frequency = frequency
+        bar_count = calendar.minutes_count_for_sessions_in_range(start_date, end_date)
+
     return data.get_history_window(symbols, end_date, bar_count, frequency, fields, data_frequency)

@@ -194,6 +194,7 @@ class BadClean(click.ClickException, ValueError):
     --------
     clean
     """
+
     def __init__(self, before, after, keep_last):
         super(BadClean, self).__init__(
             'Cannot pass a combination of `before` and `after` with'
@@ -351,7 +352,7 @@ def _make_bundle_core():
                environ=os.environ,
                timestamp=None,
                assets_versions=(),
-               show_progress=False):
+               show_progress=False, ):
         """Ingest data for a given bundle.
 
         Parameters
@@ -367,6 +368,8 @@ def _make_bundle_core():
             Versions of the assets db to which to downgrade.
         show_progress : bool, optional
             Tell the ingest function to display the progress where possible.
+        incremental : bool, optional
+            Tell the ingest function to incremental ingest
         """
         try:
             bundle = bundles[name]
@@ -383,12 +386,20 @@ def _make_bundle_core():
 
         if end_session is None or end_session > calendar.last_session:
             end_session = calendar.last_session
+        try:
+            candidates = os.listdir(
+                pth.data_path([name], environ=environ),
+            )
+            timestr = max(
+                filter(complement(pth.hidden), candidates),
+                key=from_bundle_ingest_dirname,
+            )
+        except Exception:
+            if timestamp is None:
+                timestamp = pd.Timestamp.utcnow()
+            timestamp = timestamp.tz_convert('utc').tz_localize(None)
 
-        if timestamp is None:
-            timestamp = pd.Timestamp.utcnow()
-        timestamp = timestamp.tz_convert('utc').tz_localize(None)
-
-        timestr = to_bundle_ingest_dirname(timestamp)
+            timestr = to_bundle_ingest_dirname(timestamp)
         cachepath = cache_path(name, environ=environ)
         pth.ensure_directory(pth.data_path([name, timestr], environ=environ))
         pth.ensure_directory(cachepath)
@@ -400,10 +411,9 @@ def _make_bundle_core():
                 wd = stack.enter_context(working_dir(
                     pth.data_path([], environ=environ))
                 )
-                daily_bars_path = wd.ensure_dir(
-                    *daily_equity_relative(
-                        name, timestr, environ=environ,
-                    )
+                daily_bars_path = daily_equity_path(name, timestr, environ=environ)
+                pth.ensure_directory(
+                    daily_bars_path
                 )
                 daily_bar_writer = BcolzDailyBarWriter(
                     daily_bars_path,
@@ -417,19 +427,26 @@ def _make_bundle_core():
                 # that it can compute the adjustment ratios for the dividends.
 
                 daily_bar_writer.write(())
+
+                minute_bars_path = minute_equity_path(name, timestr, environ=environ)
+                pth.ensure_directory(
+                    minute_bars_path
+                )
                 minute_bar_writer = BcolzMinuteBarWriter(
-                    wd.ensure_dir(*minute_equity_relative(
-                        name, timestr, environ=environ)
-                    ),
+                    minute_bars_path,
                     calendar,
                     start_session,
                     end_session,
                     minutes_per_day=bundle.minutes_per_day,
                 )
-                assets_db_path = wd.getpath(*asset_db_relative(
-                    name, timestr, environ=environ,
-                ))
-                asset_db_writer = AssetDBWriter(assets_db_path)
+                wd.ensure_dir(
+                    name, timestr,
+                )
+                asset_db_writer = AssetDBWriter(
+                    wd.getpath(*asset_db_relative(
+                        name, timestr, environ=environ,
+                    ))
+                )
 
                 fundamental_db_writer = FundamentalWriter(
                     wd.getpath(*fundamental_db_releative(
@@ -553,7 +570,7 @@ def _make_bundle_core():
                 adjustment_db_path(name, timestr, environ=environ),
             ),
             fundamental_reader=FundamentalReader(
-                fundamental_db_path(name,timestr,environ=environ),
+                fundamental_db_path(name, timestr, environ=environ),
             ),
         )
 
@@ -618,8 +635,8 @@ def _make_bundle_core():
             def should_clean(name):
                 dt = from_bundle_ingest_dirname(name)
                 return (
-                    (before is not None and dt < before) or
-                    (after is not None and dt > after)
+                        (before is not None and dt < before) or
+                        (after is not None and dt > after)
                 )
 
         elif keep_last >= 0:
