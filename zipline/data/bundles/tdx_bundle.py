@@ -266,8 +266,8 @@ def tdx_bundle(assets,
             dates_json[freq][symbol] = end.strftime('%Y%m%d')
             yield int(symbol), data
 
-        with open(dates_path, 'w') as f:
-            json.dump(dates_json, f)
+            with open(dates_path, 'w') as f:
+                json.dump(dates_json, f)
 
     symbol_map = symbols.symbol
 
