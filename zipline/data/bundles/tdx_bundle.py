@@ -224,8 +224,9 @@ def tdx_bundle(assets,
             '1m': {}
         }
 
+    session_bars = create_engine('sqlite:///' + join(output_dir, SESSION_BAR_DB))
+
     def gen_symbols_data(symbol_map, freq='1d'):
-        session_bars = create_engine('sqlite:///' + join(output_dir, SESSION_BAR_DB))
         if not session_bars.has_table(SESSION_BAR_TABLE):
             Base.metadata.create_all(session_bars.connect(), checkfirst=True,
                                      tables=[Base.metadata.tables[SESSION_BAR_TABLE]])
@@ -245,7 +246,7 @@ def tdx_bundle(assets,
 
         for index, symbol in symbol_map.iteritems():
             try:
-                start = pd.to_datetime(dates_json[freq][symbol],utc=True) + pd.Timedelta('1 D')
+                start = pd.to_datetime(dates_json[freq][symbol], utc=True) + pd.Timedelta('1 D')
                 if start >= end:
                     continue
             except KeyError:
@@ -256,7 +257,6 @@ def tdx_bundle(assets,
                 freq=freq,
             )
             if freq == '1d':
-                metas.append(get_meta_from_bars(data))
                 data.to_sql(SESSION_BAR_TABLE, session_bars.connect(), if_exists='append', index_label='day')
                 if symbol in dates_json[freq]:
                     data = pd.read_sql(
@@ -282,9 +282,16 @@ def tdx_bundle(assets,
                                ) as bar:
             minute_bar_writer.write(bar, show_progress=False)
 
-    symbols = pd.concat([symbols, pd.DataFrame(data=metas)], axis=1)
     splits, dividends, shares = fetch_splits_and_dividends(eg, symbols, start_session, end_session)
-    symbols.set_index('symbol', drop=False, inplace=True)
+    metas = pd.read_sql("select id as symbol,min(day) as start_date,max(day) as end_date from bars group by id;",
+                        session_bars,
+                        parse_dates=['start_date','end_date']
+                        )
+    metas['symbol'] = metas['symbol'].apply(lambda x:format(x,'06'))
+    metas['first_traded'] = metas['start_date']
+    metas['auto_close_date'] = metas['end_date']
+
+    symbols = symbols.set_index('symbol', drop=False).join(metas.set_index('symbol'), how='inner')
     asset_db_writer.write(symbols)
     adjustment_writer.write(
         splits=splits,
