@@ -56,7 +56,7 @@ class TdxBroker(Broker):
         self._mkt_client = Engine(auto_retry=True, best_ip=True)
         self._mkt_client.connect()
 
-        super(self.__class__, self).__init__()
+        super(TdxBroker, self).__init__()
 
     def subscribe_to_market_data(self, asset):
         # TODO fix me subcribe_to_market_data
@@ -274,9 +274,11 @@ class TdxBroker(Broker):
         return rt
 
     def cancel_order(self, order_id):
+        if order_id not in self.orders:  # order become transaction, can't cancel
+            return
         tdx_order_id = self.orders[order_id].broker_order_id
-        broker_id = self._client.get_stock_type(self.orders[order_id].symbol)
-        self._client.cancel(broker_id, tdx_order_id)
+        broker_id = self._client.get_stock_type("{:6d}".format(self.orders[order_id].asset.sid))
+        self._client.cancel_orders(broker_id, tdx_order_id)
 
     def get_last_traded_dt(self, asset):
         self.subscribe_to_market_data(asset)

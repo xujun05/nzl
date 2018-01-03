@@ -10,6 +10,7 @@ tmp/*
 #mac autosaving file
 .DS_Store
 *.py[co]
+*.pyd
 
 *.dll
 *.exe

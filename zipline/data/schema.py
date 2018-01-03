@@ -4,6 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+SESSION_BAR_TABLE = 'bars'
 
 class full(Base):
     __tablename__ = 'full'
@@ -56,6 +57,19 @@ class Shares(Base):
     effective_date = Column(Integer, primary_key=True)
     shares = Column(Float)
     circulation = Column(Float)
+
+
+class SessionBar(Base):
+    __tablename__ = SESSION_BAR_TABLE
+    id = Column(Integer, primary_key=True)
+    day = Column(Float, primary_key=True)
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    volume = Column(Integer)
+
+
 
 class fundamental(Base):
     __tablename__ = 'fundamental'

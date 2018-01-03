@@ -332,6 +332,7 @@ class BcolzDailyBarWriter(object):
                         raise ValueError('unknown asset id %r' % asset_id)
                     yield asset_id, table
 
+        count = 0
         for asset_id, table in iterator:
             nrows = len(table)
             for column_name in columns:
@@ -399,6 +400,10 @@ class BcolzDailyBarWriter(object):
             # in the stored data and the first date of **this** asset. This
             # offset used for output alignment by the reader.
             calendar_offset[asset_key] = sessions.get_loc(asset_first_day)
+            count = count + 1
+
+        if count == 0:
+            return
 
         # This writes the table to disk.
         full_table = ctable(
